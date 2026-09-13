@@ -1,0 +1,81 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages
+   /Kids [3 0 R]
+   /Count 1
+>>
+endobj
+3 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Contents 4 0 R
+   /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >>
+>>
+endobj
+4 0 obj
+<< /Length 1782 >>
+stream
+BT
+/F1 11 Tf
+12 TL
+72 750 Td
+(EMPLOYMENT AGREEMENT  VERSION 2.0 \(REVISED\)) '
+() '
+(This Employment Agreement \("Agreement"\) is made effective March 1, 2024,) '
+(between BrightPath Solutions LLC \("Employer"\) and Maria Gonzalez \("Employee"\).) '
+() '
+(1. POSITION AND DUTIES) '
+(Employee is hired as Lead Software Engineer. Employee shall report to the) '
+(CTO and perform duties as reasonably assigned.) '
+() '
+(2. COMPENSATION) '
+(Base Salary: USD $125,000 per year, paid bi-weekly.) '
+(Annual Bonus: Up to 15% of base salary, subject to performance review.) '
+(Equity: 0.10% stock options vesting over 4 years with a 1-year cliff.) '
+() '
+(3. BENEFITS) '
+(Health Insurance: Employer pays 100% of premium for Employee; 80% for dependants.) '
+(Paid Time Off: 20 days per calendar year, plus 5 sick days.) '
+(Remote Work: Fully remote with quarterly in-office visits required.) '
+() '
+(4. TERM AND TERMINATION) '
+(Employment is at-will. Either party may terminate with 4 weeks written notice.) '
+(Employer may terminate immediately for cause.) '
+(Severance: 1 month salary if terminated without cause after 1 year.) '
+() '
+(5. INTELLECTUAL PROPERTY) '
+(All work product created by Employee during employment belongs exclusively) '
+(to Employer, including inventions, software, and written materials.) '
+(Employee retains rights to pre-existing personal projects listed in Exhibit A.) '
+() '
+(6. NON-COMPETE) '
+(REMOVED  this clause has been deleted from the revised agreement.) '
+() '
+(7. DISPUTE RESOLUTION) '
+(Any dispute shall be resolved by binding arbitration under AAA Commercial Rules.) '
+() '
+(8. GOVERNING LAW) '
+(This Agreement is governed by the laws of Illinois.) '
+() '
+(Signatures:) '
+(Employer: _______________________   Employee: _______________________) '
+ET
+
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000308 00000 n 
+trailer
+<< /Size 5 /Root 1 0 R >>
+startxref
+2142
+%%EOF

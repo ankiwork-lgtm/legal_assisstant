@@ -1,0 +1,127 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages
+   /Kids [3 0 R 5 0 R]
+   /Count 2
+>>
+endobj
+3 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Contents 4 0 R
+   /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >>
+>>
+endobj
+4 0 obj
+<< /Length 1596 >>
+stream
+BT
+/F1 11 Tf
+12 TL
+72 750 Td
+(NON-DISCLOSURE AND CONFIDENTIALITY AGREEMENT) '
+() '
+(This Non-Disclosure Agreement \("Agreement"\) is entered into as of January 15, 2024) '
+(by and between Acme Technologies Inc., a Delaware corporation \("Disclosing Party"\)) '
+(and John Smith, an individual residing at 42 Elm Street, Chicago, IL 60601) '
+(\("Receiving Party"\).) '
+() '
+(1. DEFINITION OF CONFIDENTIAL INFORMATION) '
+() '
+("Confidential Information" means any non-public information that Disclosing Party) '
+(designates as being confidential or which, under the circumstances surrounding) '
+(disclosure, the Receiving Party knows or has reason to know is confidential,) '
+(including but not limited to: source code, algorithms, business plans,) '
+(financial projections, customer lists, trade secrets, and technical specifications.) '
+() '
+(2. OBLIGATIONS OF RECEIVING PARTY) '
+() '
+(The Receiving Party agrees to: \(a\) hold all Confidential Information in strict) '
+(confidence; \(b\) not disclose such information to any third party without prior) '
+(written consent; \(c\) use the Confidential Information solely for the purpose of) '
+(evaluating a potential business relationship; \(d\) restrict access to those) '
+(employees who have a need to know and who are bound by similar confidentiality) '
+(obligations.) '
+() '
+(3. TERM AND TERMINATION) '
+() '
+(This Agreement shall remain in effect for a period of three \(3\) years from the) '
+(date first written above. Upon termination or expiration, the Receiving Party) '
+(shall promptly return or destroy all Confidential Information.) '
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Contents 6 0 R
+   /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >>
+>>
+endobj
+6 0 obj
+<< /Length 1733 >>
+stream
+BT
+/F1 11 Tf
+12 TL
+72 750 Td
+(NDA  Page 2) '
+() '
+(4. EXCLUSIONS FROM CONFIDENTIAL INFORMATION) '
+() '
+(The obligations of this Agreement do not apply to information that:) '
+(\(a\) is or becomes publicly known through no wrongful act of the Receiving Party;) '
+(\(b\) was rightfully known to the Receiving Party prior to disclosure;) '
+(\(c\) is independently developed by the Receiving Party without use of the) '
+(    Confidential Information; or) '
+(\(d\) is required to be disclosed by law or court order, provided that the) '
+(    Receiving Party gives Disclosing Party prompt written notice.) '
+() '
+(5. REMEDIES) '
+() '
+(The Receiving Party acknowledges that any breach of this Agreement may cause) '
+(irreparable harm for which monetary damages would be an inadequate remedy.) '
+(Accordingly, the Disclosing Party shall be entitled to seek equitable relief,) '
+(including injunction and specific performance, in addition to all other remedies) '
+(available at law or in equity.) '
+() '
+(6. GOVERNING LAW) '
+() '
+(This Agreement shall be governed by and construed in accordance with the laws of) '
+(the State of Delaware, without regard to its conflict of law provisions.) '
+() '
+(7. ENTIRE AGREEMENT) '
+() '
+(This Agreement constitutes the entire agreement between the parties with respect) '
+(to its subject matter and supersedes all prior negotiations, representations, or) '
+(agreements, whether oral or written.) '
+() '
+(IN WITNESS WHEREOF, the parties have executed this Agreement as of the date above.) '
+() '
+(Acme Technologies Inc.                  John Smith) '
+(By: _______________________             Signature: ___________________) '
+(Name: Sarah Johnson, CEO                Date: _______________________) '
+ET
+
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000314 00000 n 
+0000001962 00000 n 
+0000002149 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+3934
+%%EOF

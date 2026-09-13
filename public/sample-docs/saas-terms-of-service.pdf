@@ -1,0 +1,124 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages
+   /Kids [3 0 R 5 0 R]
+   /Count 2
+>>
+endobj
+3 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Contents 4 0 R
+   /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >>
+>>
+endobj
+4 0 obj
+<< /Length 1588 >>
+stream
+BT
+/F1 11 Tf
+12 TL
+72 750 Td
+(SOFTWARE-AS-A-SERVICE TERMS OF SERVICE) '
+() '
+(Last Updated: January 1, 2024) '
+(Provider: DataVault Corp., 200 Tech Plaza, San Francisco, CA 94107) '
+() '
+(1. ACCEPTANCE OF TERMS) '
+(By accessing or using the DataVault platform \("Service"\), you \("Customer"\)) '
+(agree to be bound by these Terms of Service. If you are accepting on behalf) '
+(of a company, you represent that you have authority to bind that entity.) '
+() '
+(2. SUBSCRIPTION AND FEES) '
+(Customer agrees to pay the subscription fees set out in the applicable Order) '
+(Form. Fees are billed monthly in advance. Unpaid invoices accrue interest at) '
+(1.5% per month. Provider may suspend Service after 15 days of non-payment.) '
+() '
+(3. DATA OWNERSHIP AND PRIVACY) '
+(Customer retains full ownership of all data uploaded to the Service.) '
+(Provider processes Customer data only as directed and in accordance with) '
+(the Data Processing Agreement \(DPA\) attached as Exhibit B.) '
+(Provider shall not sell or share Customer data with third parties.) '
+() '
+(4. INTELLECTUAL PROPERTY) '
+(Provider retains all rights, title, and interest in the Service, including) '
+(all software, interfaces, and documentation. Customer is granted a limited,) '
+(non-exclusive, non-transferable licence to use the Service during the term.) '
+() '
+(5. SERVICE LEVEL AGREEMENT \(SLA\)) '
+(Provider guarantees 99.5% monthly uptime for the Service.) '
+(Downtime credits: 10% bill credit for each 0.5% below the SLA guarantee.) '
+(Scheduled maintenance windows \(max 4 hours/month\) excluded from SLA.) '
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Contents 6 0 R
+   /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >>
+>>
+endobj
+6 0 obj
+<< /Length 1550 >>
+stream
+BT
+/F1 11 Tf
+12 TL
+72 750 Td
+(SaaS Terms of Service  Page 2) '
+() '
+(6. LIMITATION OF LIABILITY) '
+(IN NO EVENT SHALL PROVIDER BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL,) '
+(OR CONSEQUENTIAL DAMAGES, INCLUDING LOSS OF PROFITS OR DATA.) '
+(PROVIDER'S TOTAL LIABILITY SHALL NOT EXCEED THE FEES PAID BY CUSTOMER) '
+(IN THE TWELVE MONTHS PRECEDING THE CLAIM.) '
+() '
+(7. INDEMNIFICATION) '
+(Customer shall indemnify and hold Provider harmless from any claims arising) '
+(from: \(a\) Customer's use of the Service in violation of these Terms;) '
+(\(b\) Customer's data infringing third-party intellectual property rights.) '
+() '
+(8. TERM AND TERMINATION) '
+(The initial term is 12 months. Either party may terminate with 30 days notice) '
+(at the end of any term. Provider may terminate immediately if Customer) '
+(materially breaches these Terms and fails to cure within 10 days of notice.) '
+() '
+(9. DATA RETURN AND DELETION) '
+(Upon termination, Provider will make Customer data available for export) '
+(for 30 days. After that period, Provider will securely delete all Customer data.) '
+() '
+(10. DISPUTE RESOLUTION) '
+(Disputes shall be resolved by binding arbitration in San Francisco, CA under) '
+(JAMS rules. Class action waiver applies  disputes must be brought individually.) '
+() '
+(11. GOVERNING LAW) '
+(These Terms are governed by the laws of California.) '
+() '
+(12. MODIFICATIONS) '
+(Provider may update these Terms with 30 days notice. Continued use of the) '
+(Service after notice constitutes acceptance of the updated Terms.) '
+ET
+
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000314 00000 n 
+0000001954 00000 n 
+0000002141 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+3743
+%%EOF
