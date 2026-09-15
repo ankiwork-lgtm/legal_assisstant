@@ -9,6 +9,9 @@ from app.models.schemas import ErrorDetail, ErrorResponse, RisksRequest, RisksRe
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import RISKS_SCHEMA, build_risks_prompt
 from app.utils.errors import http_error_response
+from app.utils.logger import get_logger
+
+_logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/analyze", tags=["analyze"])
 
@@ -34,7 +37,10 @@ async def analyze_risks(body: RisksRequest) -> RisksResponse | JSONResponse:
       phrased as informational hedged language ("may be worth reviewing because…").
     """
     text = body.text.strip()
+    _logger.info("Risks request — text_len=%d chars", len(text))
+
     if not text:
+        _logger.warning("Risks request — empty text")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ErrorResponse(
@@ -48,6 +54,8 @@ async def analyze_risks(body: RisksRequest) -> RisksResponse | JSONResponse:
     try:
         prompt = build_risks_prompt(text)
         result = generate_structured(prompt, RISKS_SCHEMA)
+        categories_count = len(result.get("categories", []))
+        _logger.info("Risks complete — categories=%d", categories_count)
         return RisksResponse(**result)
     except Exception as exc:  # noqa: BLE001
         return http_error_response(exc)

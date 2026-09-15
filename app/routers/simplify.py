@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
-from app.models.schemas import SimplifyRequest, SimplifyResponse
+from app.models.schemas import ErrorDetail, ErrorResponse, SimplifyRequest, SimplifyResponse
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import SIMPLIFY_SCHEMA, build_simplify_prompt
 from app.utils.errors import http_error_response
+from app.utils.logger import get_logger
+
+_logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/analyze", tags=["analyze"])
 
@@ -33,10 +36,10 @@ async def simplify_document(body: SimplifyRequest) -> SimplifyResponse | JSONRes
       ``heading``, ``original_excerpt_ref``, and ``plain_language``.
     """
     text = body.text.strip()
-    if not text:
-        from fastapi import status
-        from app.models.schemas import ErrorDetail, ErrorResponse
+    _logger.info("Simplify request — text_len=%d chars", len(text))
 
+    if not text:
+        _logger.warning("Simplify request — empty text")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ErrorResponse(
@@ -50,6 +53,8 @@ async def simplify_document(body: SimplifyRequest) -> SimplifyResponse | JSONRes
     try:
         prompt = build_simplify_prompt(text)
         result = generate_structured(prompt, SIMPLIFY_SCHEMA)
+        sections_count = len(result.get("sections", []))
+        _logger.info("Simplify complete — sections=%d", sections_count)
         return SimplifyResponse(**result)
     except Exception as exc:  # noqa: BLE001
         return http_error_response(exc)

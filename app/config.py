@@ -4,6 +4,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from app.utils.logger import get_logger  # noqa: E402 — must come after load_dotenv
+
+_logger = get_logger(__name__)
+
 
 class Settings:
     def __init__(self) -> None:
@@ -33,6 +37,13 @@ class Settings:
         #
         # Set this in Vercel → Project Settings → Environment Variables.
         self.cors_origin = os.environ.get("CORS_ORIGIN", "http://localhost:8000").strip()
+
+        _logger.info(
+            "Settings loaded — model=%s base_url=%s cors_origin=%s",
+            self.anthropic_model,
+            self.anthropic_base_url,
+            self.cors_origin,
+        )
 
 
 settings = Settings()

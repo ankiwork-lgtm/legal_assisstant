@@ -16,6 +16,9 @@ from typing import Any
 import anthropic
 
 from app.config import settings
+from app.utils.logger import get_logger
+
+_logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Typed exception
@@ -97,7 +100,14 @@ def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         f"The response MUST conform to this JSON Schema:\n{json.dumps(schema, indent=2)}"
     )
 
+    _logger.debug(
+        "Anthropic request — model=%s  prompt_len=%d chars",
+        settings.anthropic_model,
+        len(prompt),
+    )
+
     for attempt in range(1, _MAX_ATTEMPTS + 1):
+        t0 = time.perf_counter()
         try:
             response = client.messages.create(
                 model=settings.anthropic_model,
@@ -116,16 +126,39 @@ def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
                 stripped = stripped.split("\n", 1)[-1]
                 stripped = stripped.rsplit("```", 1)[0]
 
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            _logger.info(
+                "Anthropic response received — attempt=%d  %.1fms  response_len=%d chars",
+                attempt,
+                elapsed_ms,
+                len(raw),
+            )
             return json.loads(stripped)
 
         except AnthropicServiceError:
             raise  # don't swallow our own typed error
         except Exception as exc:  # noqa: BLE001
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            _logger.warning(
+                "Anthropic attempt %d/%d failed after %.1fms — %s: %s",
+                attempt,
+                _MAX_ATTEMPTS,
+                elapsed_ms,
+                type(exc).__name__,
+                exc,
+            )
             last_exc = exc
             if attempt < _MAX_ATTEMPTS:
+                _logger.info("Retrying in 1 s…")
                 time.sleep(1.0)
             continue
 
+    _logger.error(
+        "All %d Anthropic attempts exhausted — last error: %s: %s",
+        _MAX_ATTEMPTS,
+        type(last_exc).__name__ if last_exc else "unknown",
+        last_exc,
+    )
     raise AnthropicServiceError(
         "The AI service is temporarily unavailable. Please try again in a moment.",
         cause=last_exc,

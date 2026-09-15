@@ -9,6 +9,9 @@ from app.models.schemas import ErrorDetail, ErrorResponse, QARequest, QAResponse
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import QA_SCHEMA, build_qa_prompt
 from app.utils.errors import http_error_response
+from app.utils.logger import get_logger
+
+_logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/analyze", tags=["analyze"])
 
@@ -40,8 +43,16 @@ async def analyze_qa(body: QARequest) -> QAResponse | JSONResponse:
     """
     text = body.text.strip()
     question = body.question.strip()
+    history_len = len(body.history) if body.history else 0
+    _logger.info(
+        "QA request — text_len=%d chars  question_len=%d chars  history_turns=%d",
+        len(text),
+        len(question),
+        history_len,
+    )
 
     if not text:
+        _logger.warning("QA request — empty text")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ErrorResponse(
@@ -53,6 +64,7 @@ async def analyze_qa(body: QARequest) -> QAResponse | JSONResponse:
         )
 
     if not question:
+        _logger.warning("QA request — empty question")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ErrorResponse(
@@ -71,6 +83,10 @@ async def analyze_qa(body: QARequest) -> QAResponse | JSONResponse:
             history=history,
         )
         result = generate_structured(prompt, QA_SCHEMA)
+        _logger.info(
+            "QA complete — found_in_document=%s",
+            result.get("found_in_document"),
+        )
         return QAResponse(**result)
     except Exception as exc:  # noqa: BLE001
         return http_error_response(exc)

@@ -7,6 +7,9 @@ from fastapi.responses import JSONResponse
 
 from app.models.schemas import ErrorDetail, ErrorResponse, ExtractResponse, ExtractTextRequest
 from app.services.pdf_extractor import CorruptPDFError, ScannedPDFError, extract_text
+from app.utils.logger import get_logger
+
+_logger = get_logger(__name__)
 
 # Default upload size limit: 10 MB (keeps us within Vercel's payload limits)
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -50,10 +53,12 @@ async def extract_document(
     # Path A — file upload
     # ------------------------------------------------------------------ #
     if file is not None:
+        _logger.info("Extract request — path=file  filename=%s  content_type=%s", file.filename, file.content_type)
         if file.content_type not in ("application/pdf", "application/octet-stream"):
             # Some browsers send application/octet-stream for PDFs; we allow it
             # but still reject obviously wrong MIME types.
             if file.content_type and not file.content_type.startswith("application"):
+                _logger.warning("Rejected invalid file type — %s", file.content_type)
                 return _error(
                     code="INVALID_FILE_TYPE",
                     message=(
@@ -64,8 +69,10 @@ async def extract_document(
                 )
 
         pdf_bytes = await file.read()
+        _logger.debug("File read — size=%d bytes", len(pdf_bytes))
 
         if len(pdf_bytes) > MAX_FILE_BYTES:
+            _logger.warning("File too large — size=%d bytes  limit=%d bytes", len(pdf_bytes), MAX_FILE_BYTES)
             return _error(
                 code="FILE_TOO_LARGE",
                 message=(
@@ -77,6 +84,7 @@ async def extract_document(
             )
 
         if len(pdf_bytes) == 0:
+            _logger.warning("Empty file uploaded")
             return _error(
                 code="EMPTY_FILE",
                 message="The uploaded file is empty. Please upload a valid PDF.",
@@ -98,6 +106,11 @@ async def extract_document(
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        _logger.info(
+            "Extract complete — path=file  pages=%d  words=%d",
+            result.page_count,
+            result.word_count,
+        )
         return ExtractResponse(
             text=result.text,
             word_count=result.word_count,
@@ -110,6 +123,7 @@ async def extract_document(
     if text is not None:
         stripped = text.strip()
         if not stripped:
+            _logger.warning("Extract request — empty pasted text")
             return _error(
                 code="EMPTY_TEXT",
                 message="The provided text is empty. Please paste your document text.",
@@ -117,6 +131,7 @@ async def extract_document(
             )
 
         word_count = len(stripped.split())
+        _logger.info("Extract complete — path=text  words=%d", word_count)
         return ExtractResponse(
             text=stripped,
             word_count=word_count,
@@ -126,6 +141,7 @@ async def extract_document(
     # ------------------------------------------------------------------ #
     # Neither provided
     # ------------------------------------------------------------------ #
+    _logger.warning("Extract request — no input provided")
     return _error(
         code="NO_INPUT",
         message=(

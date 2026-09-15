@@ -26,6 +26,9 @@ from fastapi.responses import JSONResponse
 from app.models.schemas import ErrorDetail, ErrorResponse
 from app.services.pdf_extractor import CorruptPDFError, ScannedPDFError
 from app.services.anthropic_client import AnthropicServiceError
+from app.utils.logger import get_logger
+
+_logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -74,12 +77,25 @@ def http_error_response(exc: Exception) -> JSONResponse:
     """
     for exc_type, code, http_status in _EXCEPTION_MAP:
         if isinstance(exc, exc_type):
+            _logger.warning(
+                "Handled exception — code=%s  status=%d  %s: %s",
+                code,
+                http_status,
+                type(exc).__name__,
+                exc,
+            )
             body = ErrorResponse(
                 error=ErrorDetail(code=code, message=str(exc))
             )
             return JSONResponse(status_code=http_status, content=body.model_dump())
 
     # Unknown exception — return a safe generic message, no internal details
+    _logger.error(
+        "Unhandled exception — %s: %s",
+        type(exc).__name__,
+        exc,
+        exc_info=exc,
+    )
     body = ErrorResponse(
         error=ErrorDetail(code=_FALLBACK_CODE, message=_FALLBACK_MESSAGE)
     )
