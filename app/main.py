@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -38,11 +40,14 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/")
-def root() -> RedirectResponse:
-    return RedirectResponse(url="/index.html")
-
-
 # Serve the frontend static files (HTML/CSS/JS) from the public/ directory.
 # This mount must come last so API routes take priority.
-app.mount("/", StaticFiles(directory="public"), name="static")
+# Guard: on Vercel, public/ is served by @vercel/static and is not bundled
+# with the Python function, so only mount when the directory is present.
+if os.path.isdir("public"):
+
+    @app.get("/")
+    def root() -> RedirectResponse:
+        return RedirectResponse(url="/index.html")
+
+    app.mount("/", StaticFiles(directory="public"), name="static")
