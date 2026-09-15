@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LegalLens AI — Analyze Document</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    .doc-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+
+    .doc-meta__label {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--color-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 60ch;
+    }
+
+    .doc-meta__back {
+      font-size: 0.875rem;
+      white-space: nowrap;
+    }
+
+    .tab-panel {
+      padding: 0;
+    }
+
+    /* Panel inner wrapper — provides consistent card-like container */
+    .panel-inner {
+      padding: 1.25rem;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      box-shadow: var(--shadow-card);
+    }
+
+    /* Generate button row */
+    .generate-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* Loading state */
+    .loading-row {
+      display: none;
+    }
+
+    /* Error state */
+    .error-msg {
+      display: none;
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      color: var(--color-high);
+      background: #fee2e2;
+      border: 1px solid var(--color-high);
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+    }
+
+    /* Result output area */
+    .result-area {
+      display: none;
+      margin-top: 1rem;
+    }
+
+    /* Inline disclaimer (FR-8) */
+    .disclaimer-inline {
+      margin-top: 1.25rem;
+      padding: 0.75rem 1rem;
+      background: var(--color-disclaimer-background);
+      border: 1px solid var(--color-disclaimer-border);
+      border-radius: 0.375rem;
+      color: var(--color-disclaimer-text);
+      font-size: 0.875rem;
+      font-weight: 700;
+    }
+
+    /* Q&A input bar */
+    .qa-input-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+      margin-top: 1rem;
+    }
+
+    .qa-input-row textarea {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--color-border);
+      border-radius: 0.375rem;
+      background: var(--color-surface);
+      color: var(--color-text);
+      resize: vertical;
+      min-height: 3rem;
+    }
+
+    /* Error page */
+    .error-page {
+      padding: 2rem 1.25rem;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      text-align: center;
+    }
+
+    .error-page p {
+      color: var(--color-muted);
+      margin: 0 0 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .doc-meta__label {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- FR-8: persistent non-dismissible disclaimer -->
+  <aside class="disclaimer-banner" role="note" aria-label="Legal disclaimer">
+    <div class="disclaimer-banner__content">
+      <p>⚠️ LegalLens AI provides legal information only — not legal advice. Outputs do not constitute legal counsel and do not create an attorney–client relationship. Always consult a qualified attorney before making decisions with legal consequences.</p>
+    </div>
+  </aside>
+
+  <header class="site-header">
+    <div class="site-header__content">
+      <h1 class="site-title">LegalLens AI</h1>
+      <nav aria-label="Main navigation">
+        <a href="/compare.html">Compare Two Documents</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-content" id="main-content">
+
+    <!-- Populated by JS: document label + back link -->
+    <div class="doc-meta" id="doc-meta" hidden>
+      <span class="doc-meta__label" id="doc-label" title=""></span>
+      <a class="doc-meta__back" href="/index.html">← Back to Home</a>
+    </div>
+
+    <!-- Error state shown when document cannot be found -->
+    <div class="error-page" id="error-page" hidden>
+      <p id="error-page-msg">Document not found. It may have been cleared from your browser history.</p>
+      <a class="button" href="/index.html">← Back to Home</a>
+    </div>
+
+    <!-- Workspace (tabs + panels) — shown once document is loaded -->
+    <div id="workspace" hidden>
+
+      <!-- Tab nav -->
+      <div class="tabs" role="tablist" aria-label="Analysis tools">
+        <button class="tab tab--active" role="tab" id="tab-simplify"
+                aria-selected="true" aria-controls="panel-simplify">Simplify</button>
+        <button class="tab" role="tab" id="tab-risks"
+                aria-selected="false" aria-controls="panel-risks">Risks</button>
+        <button class="tab" role="tab" id="tab-checklist"
+                aria-selected="false" aria-controls="panel-checklist">Checklist</button>
+        <button class="tab" role="tab" id="tab-qa"
+                aria-selected="false" aria-controls="panel-qa">Ask a Question</button>
+      </div>
+
+      <!-- ── Simplify panel ─────────────────────────────────────────────────── -->
+      <div class="tab-panel" role="tabpanel" id="panel-simplify" aria-labelledby="tab-simplify">
+        <div class="panel-inner">
+          <div class="generate-row" id="simplify-generate-row">
+            <button class="button" id="simplify-generate-btn">Generate Plain-Language Summary</button>
+          </div>
+          <div class="loading loading-row" id="simplify-loading" aria-live="polite" aria-label="Generating summary…">
+            <span class="spinner" role="status" aria-hidden="true"></span>
+            <span>Generating summary… <small style="font-weight:400;color:var(--color-muted)">(This may take 15–20 seconds)</small></span>
+          </div>
+          <div class="error-msg" id="simplify-error" role="alert" aria-live="assertive"></div>
+          <div class="result-area" id="simplify-result"></div>
+        </div>
+      </div>
+
+      <!-- ── Risks panel ────────────────────────────────────────────────────── -->
+      <div class="tab-panel" role="tabpanel" id="panel-risks" aria-labelledby="tab-risks" hidden>
+        <div class="panel-inner">
+          <div class="generate-row" id="risks-generate-row">
+            <button class="button" id="risks-generate-btn">Generate Risk Analysis</button>
+          </div>
+          <div class="loading loading-row" id="risks-loading" aria-live="polite" aria-label="Analyzing risks…">
+            <span class="spinner" role="status" aria-hidden="true"></span>
+            <span>Analyzing risks… <small style="font-weight:400;color:var(--color-muted)">(This may take 15–20 seconds)</small></span>
+          </div>
+          <div class="error-msg" id="risks-error" role="alert" aria-live="assertive"></div>
+          <div class="result-area" id="risks-result"></div>
+        </div>
+      </div>
+
+      <!-- ── Checklist panel ────────────────────────────────────────────────── -->
+      <div class="tab-panel" role="tabpanel" id="panel-checklist" aria-labelledby="tab-checklist" hidden>
+        <div class="panel-inner">
+          <div class="generate-row" id="checklist-generate-row">
+            <button class="button" id="checklist-generate-btn">Generate Checklist</button>
+          </div>
+          <div class="loading loading-row" id="checklist-loading" aria-live="polite" aria-label="Building checklist…">
+            <span class="spinner" role="status" aria-hidden="true"></span>
+            <span>Building checklist… <small style="font-weight:400;color:var(--color-muted)">(This may take 15–20 seconds)</small></span>
+          </div>
+          <div class="error-msg" id="checklist-error" role="alert" aria-live="assertive"></div>
+          <div class="result-area" id="checklist-result"></div>
+        </div>
+      </div>
+
+      <!-- ── Ask a Question panel ───────────────────────────────────────────── -->
+      <div class="tab-panel" role="tabpanel" id="panel-qa" aria-labelledby="tab-qa" hidden>
+        <div class="panel-inner">
+          <div class="result-area" id="qa-result" style="display:block;"></div>
+          <div class="loading loading-row" id="qa-loading" aria-live="polite" aria-label="Finding answer…">
+            <span class="spinner" role="status" aria-hidden="true"></span>
+            <span>Finding answer… <small style="font-weight:400;color:var(--color-muted)">(This may take 15–20 seconds)</small></span>
+          </div>
+          <div class="error-msg" id="qa-error" role="alert" aria-live="assertive"></div>
+          <div class="qa-input-row" id="qa-input-row">
+            <label for="qa-question" class="visually-hidden">Your question</label>
+            <textarea
+              id="qa-question"
+              placeholder="Ask a question about this document…"
+              rows="2"
+            ></textarea>
+            <button class="button" id="qa-ask-btn" disabled>Ask</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /workspace -->
+  </main>
+
+  <!-- Toast notification container (12.1) -->
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script type="module">
+    import { simplifyDocument, analyzeRisks, generateChecklist, askQuestion } from "/js/api.js";
+    import { getDocument, getHistory, saveResult } from "/js/storage.js";
+    import { renderSimplify, renderRisks, renderChecklist, renderQA } from "/js/render.js";
+    import { showError } from "/js/toast.js";
+
+    // ── Read ?id= query param ──────────────────────────────────────────────────
+    const params = new URLSearchParams(window.location.search);
+    const documentId = params.get("id");
+
+    const docMetaEl    = document.getElementById("doc-meta");
+    const docLabelEl   = document.getElementById("doc-label");
+    const errorPageEl  = document.getElementById("error-page");
+    const errorPageMsg = document.getElementById("error-page-msg");
+    const workspaceEl  = document.getElementById("workspace");
+
+    // ── Load document from localStorage ───────────────────────────────────────
+    if (!documentId) {
+      showErrorPage("No document ID was provided in the URL.");
+    } else {
+      const text = getDocument(documentId);
+      if (!text) {
+        showErrorPage("Document not found. It may have been cleared from your browser history.");
+      } else {
+        // Find the label from history
+        const entry = getHistory().find((e) => e.id === documentId);
+        const label = entry?.label ?? "Document";
+        docLabelEl.textContent = label;
+        docLabelEl.title = label;
+        document.title = `LegalLens AI — ${label}`;
+        docMetaEl.hidden = false;
+        workspaceEl.hidden = false;
+        init(text, entry);
+      }
+    }
+
+    function showErrorPage(msg) {
+      errorPageMsg.textContent = msg;
+      errorPageEl.hidden = false;
+    }
+
+    // ── Tab switching ──────────────────────────────────────────────────────────
+    const tabs = [
+      { tab: document.getElementById("tab-simplify"),  panel: document.getElementById("panel-simplify") },
+      { tab: document.getElementById("tab-risks"),     panel: document.getElementById("panel-risks") },
+      { tab: document.getElementById("tab-checklist"), panel: document.getElementById("panel-checklist") },
+      { tab: document.getElementById("tab-qa"),        panel: document.getElementById("panel-qa") },
+    ];
+
+    function activateTab(index) {
+      tabs.forEach(({ tab, panel }, i) => {
+        const active = i === index;
+        tab.setAttribute("aria-selected", String(active));
+        tab.classList.toggle("tab--active", active);
+        panel.hidden = !active;
+      });
+    }
+
+    tabs.forEach(({ tab }, i) => {
+      tab.addEventListener("click", () => activateTab(i));
+      tab.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tab.click(); }
+      });
+    });
+
+    // ── Generic lazy-load helper ───────────────────────────────────────────────
+    function setupLazyTab({ generateBtn, generateRow, loading, error, result, apiFn, kind, renderFn }) {
+      generateBtn.addEventListener("click", async () => {
+        generateRow.style.display = "none";
+        error.style.display = "none";
+        loading.style.display = "flex";
+        result.style.display = "none";
+
+        try {
+          const text = getDocument(documentId);
+          const data = await apiFn(text);
+          saveResult(documentId, kind, data);
+          renderFn(data, result);
+          result.style.display = "block";
+        } catch (err) {
+          const msg = err.message || "Something went wrong. Please try again.";
+          error.textContent = msg;
+          error.style.display = "block";
+          showError(msg);
+          generateRow.style.display = "flex"; // allow retry
+        } finally {
+          loading.style.display = "none";
+        }
+      });
+    }
+
+    // ── Initialise all tabs ────────────────────────────────────────────────────
+    function init(text, entry) {
+      const cached = entry?.results ?? {};
+
+      // ── Simplify ────────────────────────────────────────────────────────────
+      const simplifyResult  = document.getElementById("simplify-result");
+      const simplifyGenRow  = document.getElementById("simplify-generate-row");
+      if (cached.simplify) {
+        renderSimplify(cached.simplify, simplifyResult);
+        simplifyResult.style.display = "block";
+        simplifyGenRow.style.display = "none";
+      } else {
+        setupLazyTab({
+          generateBtn: document.getElementById("simplify-generate-btn"),
+          generateRow: simplifyGenRow,
+          loading:     document.getElementById("simplify-loading"),
+          error:       document.getElementById("simplify-error"),
+          result:      simplifyResult,
+          apiFn:       simplifyDocument,
+          kind:        "simplify",
+          renderFn:    renderSimplify,
+        });
+      }
+
+      // ── Risks ────────────────────────────────────────────────────────────────
+      const risksResult  = document.getElementById("risks-result");
+      const risksGenRow  = document.getElementById("risks-generate-row");
+      if (cached.risks) {
+        renderRisks(cached.risks, risksResult);
+        risksResult.style.display = "block";
+        risksGenRow.style.display = "none";
+      } else {
+        setupLazyTab({
+          generateBtn: document.getElementById("risks-generate-btn"),
+          generateRow: risksGenRow,
+          loading:     document.getElementById("risks-loading"),
+          error:       document.getElementById("risks-error"),
+          result:      risksResult,
+          apiFn:       analyzeRisks,
+          kind:        "risks",
+          renderFn:    renderRisks,
+        });
+      }
+
+      // ── Checklist ────────────────────────────────────────────────────────────
+      const checklistResult = document.getElementById("checklist-result");
+      const checklistGenRow = document.getElementById("checklist-generate-row");
+      if (cached.checklist) {
+        renderChecklist(cached.checklist, checklistResult);
+        checklistResult.style.display = "block";
+        checklistGenRow.style.display = "none";
+      } else {
+        setupLazyTab({
+          generateBtn: document.getElementById("checklist-generate-btn"),
+          generateRow: checklistGenRow,
+          loading:     document.getElementById("checklist-loading"),
+          error:       document.getElementById("checklist-error"),
+          result:      checklistResult,
+          apiFn:       generateChecklist,
+          kind:        "checklist",
+          renderFn:    renderChecklist,
+        });
+      }
+
+      // ── Q&A ──────────────────────────────────────────────────────────────────
+      const qaResult  = document.getElementById("qa-result");
+      const qaLoading = document.getElementById("qa-loading");
+      const qaError   = document.getElementById("qa-error");
+      const qaInput   = document.getElementById("qa-question");
+      const qaAskBtn  = document.getElementById("qa-ask-btn");
+
+      // Build history array: [{question, answer, found_in_document, supporting_clause_ref}]
+      // storage.js saves qa as an array of raw API responses; we need the associated questions too.
+      // We store enriched objects: { question, answer, found_in_document, supporting_clause_ref }
+      let qaHistory = Array.isArray(cached.qa) ? cached.qa : [];
+
+      // Render any cached exchanges
+      if (qaHistory.length > 0) {
+        renderQA(qaHistory, qaResult);
+      } else {
+        // Show empty state placeholder
+        qaResult.innerHTML =
+          '<p style="color:var(--color-muted);font-size:0.9375rem;margin:0 0 0.5rem;">' +
+          'Ask any question about this document and get an answer grounded in the text.</p>';
+      }
+
+      // Enable/disable Ask button on textarea input
+      qaInput.addEventListener("input", () => {
+        qaAskBtn.disabled = qaInput.value.trim().length === 0;
+      });
+
+      qaAskBtn.addEventListener("click", async () => {
+        const question = qaInput.value.trim();
+        if (!question) return;
+
+        qaInput.disabled = true;
+        qaAskBtn.disabled = true;
+        qaError.style.display = "none";
+        qaLoading.style.display = "flex";
+
+        try {
+          // Build history format for the API: [{role, content}]
+          const apiHistory = qaHistory.flatMap((exchange) => [
+            { role: "user",  content: exchange.question },
+            { role: "assistant", content: exchange.answer },
+          ]);
+
+          const data = await askQuestion(text, question, apiHistory);
+          const exchange = {
+            question,
+            answer:               data.answer,
+            found_in_document:    data.found_in_document,
+            supporting_clause_ref: data.supporting_clause_ref ?? null,
+          };
+          qaHistory = [...qaHistory, exchange];
+          saveResult(documentId, "qa", exchange);
+          renderQA(qaHistory, qaResult);
+          qaInput.value = "";
+          qaAskBtn.disabled = true;
+        } catch (err) {
+          const msg = err.message || "Something went wrong. Please try again.";
+          qaError.textContent = msg;
+          qaError.style.display = "block";
+          showError(msg);
+        } finally {
+          qaLoading.style.display = "none";
+          qaInput.disabled = false;
+          qaInput.focus();
+        }
+      });
+
+      // Allow Ctrl+Enter / Cmd+Enter to submit the question
+      qaInput.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          if (!qaAskBtn.disabled) qaAskBtn.click();
+        }
+      });
+    }
+  </script>
+</body>
+</html>

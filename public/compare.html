@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LegalLens AI — Compare Documents</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <aside class="disclaimer-banner" role="note" aria-label="Legal disclaimer">
+    <div class="disclaimer-banner__content">
+      <p>⚠️ LegalLens AI provides legal information only — not legal advice. Outputs do not constitute legal counsel and do not create an attorney–client relationship. Always consult a qualified attorney before making decisions with legal consequences.</p>
+    </div>
+  </aside>
+
+  <header class="site-header">
+    <div class="site-header__content">
+      <h1 class="site-title">LegalLens AI</h1>
+    </div>
+  </header>
+
+  <main class="page-content">
+    <a class="back-link" href="/index.html">← Back to Home</a>
+    <h2 class="page-title">Compare Two Documents</h2>
+    <p class="page-intro">Upload PDFs or paste text to identify shared terms and meaningful differences.</p>
+
+    <form id="compare-form" class="card" novalidate>
+      <div class="compare-form__documents">
+        <section class="panel" aria-labelledby="document-a-heading">
+          <h3 id="document-a-heading" class="panel__title">Document A</h3>
+          <div class="field">
+            <label for="label-a">Document label <span style="font-weight:400;color:var(--color-muted)">(optional)</span></label>
+            <input id="label-a" type="text" placeholder="Document A" autocomplete="off" />
+          </div>
+          <div class="tabs" role="tablist" aria-label="Document A input mode">
+            <button class="tab tab--active" type="button" role="tab" id="tab-a-file" aria-selected="true" aria-controls="panel-a-file">Upload PDF</button>
+            <button class="tab" type="button" role="tab" id="tab-a-text" aria-selected="false" aria-controls="panel-a-text">Paste Text</button>
+          </div>
+          <div id="panel-a-file" role="tabpanel" aria-labelledby="tab-a-file">
+            <label for="file-a">
+              <span class="drop-zone" id="drop-zone-a" role="button" tabindex="0" aria-label="Drop Document A PDF here or click to browse">
+                <span>Drop your PDF here, or <strong>click to browse</strong></span>
+                <span class="drop-zone__hint">PDF only · Max 10 MB</span>
+              </span>
+            </label>
+            <input class="file-input" id="file-a" type="file" accept=".pdf" aria-label="Choose Document A PDF" />
+            <p class="file-chosen" id="file-chosen-a" aria-live="polite"></p>
+          </div>
+          <div id="panel-a-text" role="tabpanel" aria-labelledby="tab-a-text" hidden>
+            <div class="field">
+              <label for="text-a">Paste Document A text</label>
+              <textarea id="text-a" placeholder="Paste the full text of the first document here…"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="document-b-heading">
+          <h3 id="document-b-heading" class="panel__title">Document B</h3>
+          <div class="field">
+            <label for="label-b">Document label <span style="font-weight:400;color:var(--color-muted)">(optional)</span></label>
+            <input id="label-b" type="text" placeholder="Document B" autocomplete="off" />
+          </div>
+          <div class="tabs" role="tablist" aria-label="Document B input mode">
+            <button class="tab tab--active" type="button" role="tab" id="tab-b-file" aria-selected="true" aria-controls="panel-b-file">Upload PDF</button>
+            <button class="tab" type="button" role="tab" id="tab-b-text" aria-selected="false" aria-controls="panel-b-text">Paste Text</button>
+          </div>
+          <div id="panel-b-file" role="tabpanel" aria-labelledby="tab-b-file">
+            <label for="file-b">
+              <span class="drop-zone" id="drop-zone-b" role="button" tabindex="0" aria-label="Drop Document B PDF here or click to browse">
+                <span>Drop your PDF here, or <strong>click to browse</strong></span>
+                <span class="drop-zone__hint">PDF only · Max 10 MB</span>
+              </span>
+            </label>
+            <input class="file-input" id="file-b" type="file" accept=".pdf" aria-label="Choose Document B PDF" />
+            <p class="file-chosen" id="file-chosen-b" aria-live="polite"></p>
+          </div>
+          <div id="panel-b-text" role="tabpanel" aria-labelledby="tab-b-text" hidden>
+            <div class="field">
+              <label for="text-b">Paste Document B text</label>
+              <textarea id="text-b" placeholder="Paste the full text of the second document here…"></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div id="error-msg" class="error-msg" role="alert" aria-live="assertive"></div>
+      <div class="form-actions">
+        <button class="button" id="compare-btn" type="submit" disabled>Compare Documents</button>
+        <div class="loading loading-row" id="loading-indicator" aria-live="polite" aria-label="Comparing documents…">
+          <span class="spinner" role="status" aria-hidden="true"></span>
+          <span>Preparing and comparing documents… <small style="font-weight:400;color:var(--color-muted)">(This may take 15–20 seconds)</small></span>
+        </div>
+      </div>
+    </form>
+
+    <section id="results-section" class="card result-area" aria-labelledby="results-heading">
+      <h2 id="results-heading" class="card__title">Comparison Results</h2>
+      <div id="results"></div>
+    </section>
+  </main>
+
+  <!-- Toast notification container (12.1) -->
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script type="module">
+    import { compareDocuments, extractDocument, MAX_FILE_SIZE } from "/js/api.js";
+    import { saveResult } from "/js/storage.js";
+    import { renderCompare } from "/js/render.js";
+    import { showError as showToastError } from "/js/toast.js";
+
+    const form = document.getElementById("compare-form");
+    const compareButton = document.getElementById("compare-btn");
+    const error = document.getElementById("error-msg");
+    const loading = document.getElementById("loading-indicator");
+    const resultsSection = document.getElementById("results-section");
+    const results = document.getElementById("results");
+    const documents = {
+      a: createDocumentInput("a", "Document A"),
+      b: createDocumentInput("b", "Document B"),
+    };
+
+    function createDocumentInput(key, defaultLabel) {
+      const input = {
+        mode: "file",
+        file: null,
+        defaultLabel,
+        label: document.getElementById(`label-${key}`),
+        text: document.getElementById(`text-${key}`),
+        fileInput: document.getElementById(`file-${key}`),
+        fileChosen: document.getElementById(`file-chosen-${key}`),
+        dropZone: document.getElementById(`drop-zone-${key}`),
+        fileTab: document.getElementById(`tab-${key}-file`),
+        textTab: document.getElementById(`tab-${key}-text`),
+        filePanel: document.getElementById(`panel-${key}-file`),
+        textPanel: document.getElementById(`panel-${key}-text`),
+      };
+
+      input.fileTab.addEventListener("click", () => activateMode(input, "file"));
+      input.textTab.addEventListener("click", () => activateMode(input, "text"));
+      [input.fileTab, input.textTab].forEach((tab) => {
+        tab.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            tab.click();
+          }
+        });
+      });
+      input.text.addEventListener("input", updateSubmitState);
+      input.fileInput.addEventListener("change", () => selectFile(input, input.fileInput.files?.[0]));
+      input.dropZone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        input.dropZone.classList.add("drop-zone--over");
+      });
+      input.dropZone.addEventListener("dragleave", () => input.dropZone.classList.remove("drop-zone--over"));
+      input.dropZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        input.dropZone.classList.remove("drop-zone--over");
+        selectFile(input, event.dataTransfer?.files?.[0]);
+      });
+      input.dropZone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          input.fileInput.click();
+        }
+      });
+      return input;
+    }
+
+    function activateMode(input, mode) {
+      input.mode = mode;
+      const isFile = mode === "file";
+      input.fileTab.setAttribute("aria-selected", String(isFile));
+      input.fileTab.classList.toggle("tab--active", isFile);
+      input.textTab.setAttribute("aria-selected", String(!isFile));
+      input.textTab.classList.toggle("tab--active", !isFile);
+      input.filePanel.hidden = !isFile;
+      input.textPanel.hidden = isFile;
+      hideError();
+      updateSubmitState();
+    }
+
+    function selectFile(input, file) {
+      hideError();
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith(".pdf")) {
+        input.file = null;
+        input.fileInput.value = "";
+        input.fileChosen.textContent = "";
+        showError("Only PDF files are supported. Please select a .pdf file.");
+      } else if (file.size > MAX_FILE_SIZE) {
+        input.file = null;
+        input.fileInput.value = "";
+        input.fileChosen.textContent = "";
+        showError("Each file must be 10 MB or smaller.");
+      } else {
+        input.file = file;
+        input.fileChosen.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+      }
+      updateSubmitState();
+    }
+
+    function hasContent(input) {
+      return input.mode === "file" ? input.file !== null : input.text.value.trim().length > 0;
+    }
+
+    function updateSubmitState() {
+      compareButton.disabled = !hasContent(documents.a) || !hasContent(documents.b);
+    }
+
+    function showError(message) {
+      error.textContent = message;
+      error.style.display = "block";
+    }
+
+    function hideError() {
+      error.textContent = "";
+      error.style.display = "none";
+    }
+
+    async function getDocumentText(input) {
+      if (input.mode === "text") return input.text.value.trim();
+      const formData = new FormData();
+      formData.append("file", input.file);
+      const extracted = await extractDocument(formData);
+      return extracted.text ?? "";
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      hideError();
+      if (!hasContent(documents.a) || !hasContent(documents.b)) {
+        showError("Please provide both documents before comparing.");
+        return;
+      }
+
+      const labelA = documents.a.label.value.trim() || documents.a.defaultLabel;
+      const labelB = documents.b.label.value.trim() || documents.b.defaultLabel;
+      compareButton.disabled = true;
+      loading.style.display = "flex";
+      resultsSection.style.display = "none";
+
+      try {
+        const [docA, docB] = await Promise.all([
+          getDocumentText(documents.a),
+          getDocumentText(documents.b),
+        ]);
+        const data = await compareDocuments(docA, docB, labelA, labelB);
+        saveResult(`compare-${Date.now()}`, "compare", data);
+        renderCompare(data, results, labelA, labelB);
+        resultsSection.style.display = "block";
+      } catch (err) {
+        const msg = err.message || "Something went wrong. Please try again.";
+        showError(msg);
+        showToastError(msg);
+      } finally {
+        loading.style.display = "none";
+        updateSubmitState();
+      }
+    });
+  </script>
+</body>
+</html>
