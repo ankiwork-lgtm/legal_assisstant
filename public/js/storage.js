@@ -11,7 +11,16 @@ function readHistory() {
 }
 
 function writeHistory(history) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  } catch (err) {
+    // QuotaExceededError — storage is full (common in Incognito / private browsing).
+    // Propagate a user-friendly message so callers can surface it.
+    throw new Error(
+      "Your browser storage is full. This can happen in private/incognito mode. " +
+        "Please try again in a regular browser window, or clear your browser data and retry.",
+    );
+  }
 }
 
 function createEntry(documentId, label, text = "") {
@@ -45,7 +54,11 @@ export function saveDocument(documentId, label, text) {
 }
 
 export function getDocument(documentId) {
-  return readHistory().find((item) => item.id === documentId)?.text || null;
+  const entry = readHistory().find((item) => item.id === documentId);
+  if (!entry) return null;
+  // Return the text even if it is an empty string — callers must check for null
+  // (entry not found) vs "" (entry exists but text is empty).
+  return entry.text ?? null;
 }
 
 export function saveResult(documentId, kind, data) {

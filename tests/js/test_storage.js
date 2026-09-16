@@ -188,6 +188,38 @@ async function testSaveResultCreatesEntryIfMissing() {
   assertEqual(entry.results.risks, { categories: [] }, "risk result stored on implicit entry");
 }
 
+async function testGetDocumentEmptyStringDistinct() {
+  console.log("\n[getDocument — empty string vs null]");
+  const { dataUrl } = makeMod();
+  const { saveDocument, getDocument } = await import(dataUrl);
+
+  saveDocument("doc-empty", "Empty", "");
+  // An entry that exists but has empty text should return "" not null
+  assertEqual(getDocument("doc-empty"), "", "getDocument returns empty string for entry with empty text");
+  // A completely missing entry should still return null
+  assertEqual(getDocument("no-such-id"), null, "getDocument returns null for unknown id");
+}
+
+async function testWriteHistoryQuotaError() {
+  console.log("\n[writeHistory — QuotaExceededError propagates as user-friendly message]");
+  const { dataUrl, ls } = makeMod();
+  // Override setItem to simulate a QuotaExceededError
+  ls.setItem = () => { throw new DOMException("QuotaExceededError", "QuotaExceededError"); };
+  const { saveDocument } = await import(dataUrl);
+
+  let thrownMsg = null;
+  try {
+    saveDocument("doc-q", "Label", "text");
+  } catch (err) {
+    thrownMsg = err.message;
+  }
+  assert(thrownMsg !== null, "saveDocument throws when storage quota is exceeded");
+  assert(
+    thrownMsg.toLowerCase().includes("storage") || thrownMsg.toLowerCase().includes("incognito"),
+    "error message mentions storage or incognito"
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
@@ -201,6 +233,8 @@ async function run() {
   await testGetHistorySorting();
   await testClearHistory();
   await testSaveResultCreatesEntryIfMissing();
+  await testGetDocumentEmptyStringDistinct();
+  await testWriteHistoryQuotaError();
 
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
