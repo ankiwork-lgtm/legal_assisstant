@@ -1,0 +1,8 @@
+[run]
+source = app
+omit =
+    app/services/gemini_client.py
+
+[report]
+fail_under = 80
+show_missing = true

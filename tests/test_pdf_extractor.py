@@ -272,3 +272,51 @@ class TestExtractEndpoint:
         )
         assert resp.status_code == 400
         assert resp.json()["error"]["code"] == "EMPTY_FILE"
+
+    def test_non_pdf_bytes_return_400_corrupt_pdf(self):
+        """A file with a .pdf name but non-PDF content should get CORRUPT_PDF (400)."""
+        fake_pdf = b"JPEG\xff\xd8\xff\xe0 not a pdf"
+        resp = client.post(
+            "/api/documents/extract",
+            files={"file": ("image.pdf", fake_pdf, "application/pdf")},
+        )
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "CORRUPT_PDF"
+
+
+# ---------------------------------------------------------------------------
+# Unit-level magic-byte tests (call extract_text directly)
+# ---------------------------------------------------------------------------
+
+class TestMagicByteValidation:
+    """Verify that extract_text() rejects non-PDF bytes before calling pypdf."""
+
+    def test_rejects_completely_random_bytes(self):
+        with pytest.raises(CorruptPDFError, match="does not appear to be a valid PDF"):
+            extract_text(b"not a pdf at all")
+
+    def test_rejects_jpeg_header(self):
+        jpeg_header = b"\xff\xd8\xff\xe0\x00\x10JFIF"
+        with pytest.raises(CorruptPDFError, match="does not appear to be a valid PDF"):
+            extract_text(jpeg_header)
+
+    def test_rejects_empty_bytes(self):
+        with pytest.raises(CorruptPDFError):
+            extract_text(b"")
+
+    def test_rejects_three_byte_truncated_header(self):
+        """Even %PD (3 bytes) should fail the 4-byte magic check."""
+        with pytest.raises(CorruptPDFError):
+            extract_text(b"%PD")
+
+    def test_accepts_valid_pdf_header(self):
+        """A real minimal PDF starting with %PDF should not raise CorruptPDFError
+        at the magic-byte stage (it may fail later on parse, but not here)."""
+        # Use a hand-crafted multi-page PDF from the helper if available,
+        # or just confirm that b"%PDF" passes the magic check and gets to pypdf.
+        valid_pdf = _make_minimal_pdf(
+            ["Hello world this is a valid legal document with enough text content here."]
+        )
+        # Should not raise CorruptPDFError due to magic bytes
+        result = extract_text(valid_pdf)
+        assert result.page_count >= 1

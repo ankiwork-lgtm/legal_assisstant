@@ -10,6 +10,11 @@ _logger = get_logger(__name__)
 
 MAX_TEXT_CHARS = 50_000
 
+# Documents above this character count approach the AI context window limit.
+# The anthropic_client will truncate prompts exceeding _PROMPT_CHAR_LIMIT to
+# protect response quality and avoid silent degradation on very large files.
+WARN_TEXT_CHARS = 30_000
+
 
 class Settings:
     def __init__(self) -> None:

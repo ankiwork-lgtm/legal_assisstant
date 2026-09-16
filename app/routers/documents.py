@@ -6,6 +6,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, s
 from fastapi.responses import JSONResponse
 
 from app.config import MAX_TEXT_CHARS
+from app.limiter import limiter
 from app.models.schemas import ErrorDetail, ErrorResponse, ExtractResponse, ExtractTextRequest
 from app.services.pdf_extractor import CorruptPDFError, ScannedPDFError, extract_text
 from app.utils.logger import get_logger
@@ -30,10 +31,13 @@ def _error(code: str, message: str, status_code: int) -> JSONResponse:
         400: {"model": ErrorResponse, "description": "Invalid or corrupt PDF"},
         413: {"model": ErrorResponse, "description": "File exceeds size limit"},
         422: {"model": ErrorResponse, "description": "Scanned/image PDF"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
     },
     summary="Extract text from a PDF upload or accept pasted text",
 )
+@limiter.limit("10/minute")
 async def extract_document(
+    request: Request,
     file: UploadFile | None = File(default=None),
     text: str | None = Form(default=None),
 ) -> ExtractResponse | JSONResponse:

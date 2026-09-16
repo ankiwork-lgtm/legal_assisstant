@@ -39,3 +39,22 @@ next-env.d.ts
 
 # secret env file
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Internal planning / evaluation artefacts (not part of the submission)
+score-improvement-plan.md
+public-ui-redesign-plan.md
+legallens-ai-evaluation-report.html
+public/feature-gap-analysis.html

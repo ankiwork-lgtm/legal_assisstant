@@ -11,6 +11,9 @@
 </head>
 <body>
 
+  <!-- Skip-to-main-content link (WCAG 2.4.1) — visible only on keyboard focus -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
   <!-- FR-8: persistent non-dismissible disclaimer -->
   <aside class="disclaimer-banner" role="note" aria-label="Legal disclaimer">
     <div class="disclaimer-banner__content">
@@ -204,10 +207,12 @@
     });
 
     // ── Generic lazy-load helper ───────────────────────────────────────────────
-    function setupLazyTab({ generateBtn, generateRow, loading, error, result, apiFn, kind, renderFn }) {
+    function setupLazyTab({ generateBtn, generateRow, loading, error, result, apiFn, kind, renderFn, loadingLabel }) {
       generateBtn.addEventListener("click", async () => {
         generateRow.style.display = "none";
         error.style.display = "none";
+        // Update the accessible label so screen readers announce the right action
+        if (loadingLabel) loading.setAttribute("aria-label", loadingLabel);
         loading.style.display = "flex";
         result.style.display = "none";
 
@@ -250,6 +255,7 @@
           apiFn:       simplifyDocument,
           kind:        "simplify",
           renderFn:    renderSimplify,
+          loadingLabel: "Simplifying document…",
         });
       }
 
@@ -270,6 +276,7 @@
           apiFn:       analyzeRisks,
           kind:        "risks",
           renderFn:    renderRisks,
+          loadingLabel: "Analysing risks…",
         });
       }
 
@@ -290,6 +297,7 @@
           apiFn:       generateChecklist,
           kind:        "checklist",
           renderFn:    renderChecklist,
+          loadingLabel: "Generating checklist…",
         });
       }
 
@@ -327,6 +335,7 @@
         qaInput.disabled = true;
         qaAskBtn.disabled = true;
         qaError.style.display = "none";
+        qaLoading.setAttribute("aria-label", "Answering your question…");
         qaLoading.style.display = "flex";
 
         try {

@@ -43,6 +43,17 @@ def extract_text(pdf_bytes: bytes) -> ExtractionResult:
     """
     _logger.debug("PDF extraction started — size=%d bytes", len(pdf_bytes))
 
+    # ── Magic-byte validation ────────────────────────────────────────────────
+    # Valid PDF files always begin with the 4-byte sequence b"%PDF" (0x25504446).
+    # Checking this before pypdf prevents confusing internal exceptions when a
+    # caller uploads a non-PDF file (e.g. an image renamed as .pdf).
+    if len(pdf_bytes) < 4 or pdf_bytes[:4] != b"%PDF":
+        _logger.warning("PDF magic bytes missing — rejecting non-PDF upload")
+        raise CorruptPDFError(
+            "The uploaded file does not appear to be a valid PDF "
+            "(missing %PDF header). Please upload a text-based PDF file."
+        )
+
     try:
         reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
     except Exception as exc:

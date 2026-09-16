@@ -44,6 +44,11 @@ class AnthropicServiceError(RuntimeError):
 _TIMEOUT_SECONDS = 60.0
 _MAX_ATTEMPTS = 2  # 1 initial attempt + 1 retry
 _MAX_TOKENS = 4096
+# Max characters to send in a single prompt.  Very long prompts consume most
+# of the model's context window, leaving little room for the structured
+# response and degrading output quality.  We truncate and append a notice
+# rather than rejecting outright so the user still gets a result.
+_PROMPT_CHAR_LIMIT = 40_000
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +98,21 @@ async def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, 
     """
     client = _get_client()
     last_exc: BaseException | None = None
+
+    # ── Prompt length guard ──────────────────────────────────────────────────
+    # Truncate excessively long prompts before they consume the entire context
+    # window, which would leave too few tokens for the structured JSON response.
+    if len(prompt) > _PROMPT_CHAR_LIMIT:
+        _logger.warning(
+            "Prompt truncated — original=%d chars  limit=%d chars",
+            len(prompt),
+            _PROMPT_CHAR_LIMIT,
+        )
+        prompt = (
+            prompt[:_PROMPT_CHAR_LIMIT]
+            + "\n\n[Note: document was truncated to fit within the processing limit. "
+            "The analysis covers the first portion of the document.]"
+        )
 
     system_prompt = (
         "You are a structured JSON API. "
