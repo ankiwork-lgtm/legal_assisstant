@@ -49,10 +49,12 @@ async def analyze_compare(request: Request, body: CompareRequest) -> CompareResp
     """
     doc_a = body.doc_a.strip()
     doc_b = body.doc_b.strip()
+    label_a = body.label_a
+    label_b = body.label_b
     _logger.info(
         "Compare request — label_a=%r  label_b=%r  doc_a_len=%d  doc_b_len=%d chars",
-        body.label_a,
-        body.label_b,
+        label_a,
+        label_b,
         len(doc_a),
         len(doc_b),
     )
@@ -102,8 +104,8 @@ async def analyze_compare(request: Request, body: CompareRequest) -> CompareResp
         prompt = build_compare_prompt(
             doc_a=doc_a,
             doc_b=doc_b,
-            label_a=body.label_a,
-            label_b=body.label_b,
+            label_a=label_a,
+            label_b=label_b,
         )
         result = await generate_structured(prompt, COMPARE_SCHEMA)
         shared_count = len(result.get("shared_topics", []))

@@ -33,8 +33,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.cors_origin],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 
@@ -58,6 +58,12 @@ async def add_security_headers(request: Request, call_next):  # type: ignore[typ
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Disable the legacy browser XSS auditor (can introduce vulnerabilities when enabled)
+    response.headers["X-XSS-Protection"] = "0"
+    # Restrict browser feature/API access to only what the app requires
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # Enforce HTTPS for 1 year (only meaningful in production, harmless in dev)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -99,7 +105,8 @@ app.include_router(qa.router)
 
 
 @app.get("/api/health")
-def health() -> dict[str, str]:
+@limiter.limit("60/minute")
+def health(request: Request) -> dict[str, str]:
     _logger.debug("Health check requested")
     return {"status": "ok"}
 

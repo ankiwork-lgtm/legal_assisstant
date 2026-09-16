@@ -3,18 +3,24 @@
 - Model: configured via ANTHROPIC_MODEL env var (default: claude-haiku-4-5)
 - Base URL: configured via ANTHROPIC_BASE_URL env var
 - Forces JSON output via a system prompt instructing JSON-only responses.
-- Wraps calls with a 60-second timeout and one retry on transient failure.
+- Wraps calls with a 60-second timeout and one retry on transient failure
+  using exponential backoff with jitter.
+- Caches identical prompt+schema pairs for 5 minutes (max 64 entries) to
+  avoid redundant API calls for the same document analysis.
 - Raises AnthropicServiceError (HTTP 502) on permanent failure.
 """
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import random
 import time
 from typing import Any
 
 import anthropic
+from cachetools import TTLCache
 
 from app.config import settings
 from app.utils.logger import get_logger
@@ -50,23 +56,31 @@ _MAX_TOKENS = 4096
 # rather than rejecting outright so the user still gets a result.
 _PROMPT_CHAR_LIMIT = 40_000
 
+# ---------------------------------------------------------------------------
+# Response cache: avoids redundant AI calls for identical prompt+schema pairs.
+# TTL = 300 s (5 min), max 64 entries — lightweight, zero external deps.
+# ---------------------------------------------------------------------------
+
+_response_cache: TTLCache[str, dict[str, Any]] = TTLCache(maxsize=64, ttl=300)
+
+
+def _cache_key(prompt: str, schema: dict[str, Any]) -> str:
+    """Return a stable hex digest for a (prompt, schema) pair."""
+    h = hashlib.sha256()
+    h.update(prompt.encode("utf-8"))
+    h.update(json.dumps(schema, sort_keys=True).encode("utf-8"))
+    return h.hexdigest()
+
 
 # ---------------------------------------------------------------------------
-# Client singleton (initialised lazily so tests can import without a real key)
+# Async client singleton (eagerly initialised at module load — race-free)
 # ---------------------------------------------------------------------------
 
-_client: anthropic.Anthropic | None = None
-
-
-def _get_client() -> anthropic.Anthropic:
-    global _client
-    if _client is None:
-        _client = anthropic.Anthropic(
-            api_key=settings.anthropic_api_key,
-            base_url=settings.anthropic_base_url,
-            timeout=_TIMEOUT_SECONDS,
-        )
-    return _client
+_client = anthropic.AsyncAnthropic(
+    api_key=settings.anthropic_api_key,
+    base_url=settings.anthropic_base_url,
+    timeout=_TIMEOUT_SECONDS,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +110,12 @@ async def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, 
     AnthropicServiceError
         If all attempts fail (timeout, API error, or unparseable response).
     """
-    client = _get_client()
+    # ── Cache lookup ─────────────────────────────────────────────────────────
+    cache_key = _cache_key(prompt, schema)
+    if cache_key in _response_cache:
+        _logger.debug("Cache hit — returning cached response (key=%s…)", cache_key[:12])
+        return _response_cache[cache_key]
+
     last_exc: BaseException | None = None
 
     # ── Prompt length guard ──────────────────────────────────────────────────
@@ -130,8 +149,8 @@ async def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, 
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         t0 = time.perf_counter()
         try:
-            response = await asyncio.to_thread(
-                client.messages.create,
+            # Native async call — no thread-pool blocking
+            response = await _client.messages.create(
                 model=settings.anthropic_model,
                 max_tokens=_MAX_TOKENS,
                 system=system_prompt,
@@ -155,7 +174,11 @@ async def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, 
                 elapsed_ms,
                 len(raw),
             )
-            return json.loads(stripped)
+            result = json.loads(stripped)
+
+            # Store in cache before returning
+            _response_cache[cache_key] = result
+            return result
 
         except AnthropicServiceError:
             raise  # don't swallow our own typed error
@@ -171,8 +194,10 @@ async def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, 
             )
             last_exc = exc
             if attempt < _MAX_ATTEMPTS:
-                _logger.info("Retrying in 1 s…")
-                await asyncio.sleep(1.0)
+                # Exponential backoff with jitter: 1s ± 0–0.5s, 2s ± 0–0.5s, …
+                wait = 2 ** (attempt - 1) + random.uniform(0, 0.5)  # noqa: S311
+                _logger.info("Retrying in %.2f s…", wait)
+                await asyncio.sleep(wait)
             continue
 
     _logger.error(

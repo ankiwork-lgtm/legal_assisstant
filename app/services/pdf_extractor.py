@@ -80,7 +80,7 @@ def extract_text(pdf_bytes: bytes) -> ExtractionResult:
         page_texts.append(f"[Page {page_num}]\n{raw}")
 
     full_text = "\n\n".join(page_texts)
-    total_chars = sum(len(p) for p in page_texts)
+    total_chars = len(full_text)
     avg_chars_per_page = total_chars / page_count
 
     if avg_chars_per_page < _MIN_CHARS_PER_PAGE:

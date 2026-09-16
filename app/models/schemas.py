@@ -163,10 +163,12 @@ class CompareRequest(BaseModel):
     doc_b: str = Field(..., min_length=1, description="Full text of the second document.")
     label_a: str = Field(
         default="Document A",
+        max_length=200,
         description="Human-readable label for the first document.",
     )
     label_b: str = Field(
         default="Document B",
+        max_length=200,
         description="Human-readable label for the second document.",
     )
 
@@ -234,7 +236,7 @@ class QARequest(BaseModel):
     """Request body for POST /api/analyze/qa."""
 
     text: str = Field(..., min_length=1, description="Raw document text to query against.")
-    question: str = Field(..., min_length=1, description="The user's question about the document.")
+    question: str = Field(..., min_length=1, max_length=2000, description="The user's question about the document.")
     history: List[HistoryItem] = Field(
         default_factory=list,
         description=(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 
@@ -59,19 +61,20 @@ async def extract_document(
     # ------------------------------------------------------------------ #
     if file is not None:
         _logger.info("Extract request — path=file  filename=%s  content_type=%s", file.filename, file.content_type)
-        if file.content_type not in ("application/pdf", "application/octet-stream"):
-            # Some browsers send application/octet-stream for PDFs; we allow it
-            # but still reject obviously wrong MIME types.
-            if file.content_type and not file.content_type.startswith("application"):
-                _logger.warning("Rejected invalid file type — %s", file.content_type)
-                return _error(
-                    code="INVALID_FILE_TYPE",
-                    message=(
-                        f"Unsupported file type '{file.content_type}'. "
-                        "Please upload a PDF file."
-                    ),
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
+        # Strict allowlist: only accept known PDF MIME types.
+        # Using a blocklist/partial check allowed application/zip and similar
+        # types to bypass validation — an explicit allowlist is safer.
+        _ALLOWED_CONTENT_TYPES = {"application/pdf", "application/octet-stream"}
+        if file.content_type not in _ALLOWED_CONTENT_TYPES:
+            _logger.warning("Rejected invalid file type — %s", file.content_type)
+            return _error(
+                code="INVALID_FILE_TYPE",
+                message=(
+                    f"Unsupported file type '{file.content_type}'. "
+                    "Please upload a PDF file."
+                ),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         pdf_bytes = await file.read()
         _logger.debug("File read — size=%d bytes", len(pdf_bytes))
@@ -97,7 +100,9 @@ async def extract_document(
             )
 
         try:
-            result = extract_text(pdf_bytes)
+            # extract_text is CPU-bound (synchronous pypdf parse).
+            # Run in a thread-pool so the async event loop stays free.
+            result = await asyncio.to_thread(extract_text, pdf_bytes)
         except ScannedPDFError as exc:
             return _error(
                 code="SCANNED_PDF",

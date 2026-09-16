@@ -9,7 +9,7 @@ Covers:
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.responses import JSONResponse
@@ -60,77 +60,88 @@ def _mock_anthropic_response(payload: dict) -> MagicMock:
     return resp
 
 
+@pytest.fixture(autouse=True)
+def clear_response_cache():
+    """Ensure the TTL cache is empty before each test to prevent bleed-through."""
+    from app.services.anthropic_client import _response_cache
+    _response_cache.clear()
+    yield
+    _response_cache.clear()
+
+
 class TestGenerateStructured:
     """Tests for generate_structured() — Anthropic API is always mocked."""
 
     @pytest.mark.asyncio
-    @patch("app.services.anthropic_client._get_client")
-    async def test_returns_parsed_dict_on_success(self, mock_get_client):
+    @patch("app.services.anthropic_client._client")
+    async def test_returns_parsed_dict_on_success(self, mock_client):
         expected = {"overview": "test", "sections": []}
-        mock_get_client.return_value.messages.create.return_value = (
-            _mock_anthropic_response(expected)
+        mock_client.messages.create = AsyncMock(
+            return_value=_mock_anthropic_response(expected)
         )
         result = await generate_structured("some prompt", SIMPLIFY_SCHEMA)
         assert result == expected
 
     @pytest.mark.asyncio
-    @patch("app.services.anthropic_client._get_client")
-    async def test_calls_create_once_on_success(self, mock_get_client):
-        mock_get_client.return_value.messages.create.return_value = (
-            _mock_anthropic_response(
+    @patch("app.services.anthropic_client._client")
+    async def test_calls_create_once_on_success(self, mock_client):
+        mock_client.messages.create = AsyncMock(
+            return_value=_mock_anthropic_response(
                 {"answer": "yes", "found_in_document": True, "supporting_clause_ref": None}
             )
         )
         await generate_structured("prompt", QA_SCHEMA)
-        assert mock_get_client.return_value.messages.create.call_count == 1
+        assert mock_client.messages.create.call_count == 1
 
     @pytest.mark.asyncio
     @patch("app.services.anthropic_client.asyncio.sleep")
-    @patch("app.services.anthropic_client._get_client")
-    async def test_retries_once_on_transient_failure(self, mock_get_client, mock_sleep):
+    @patch("app.services.anthropic_client._client")
+    async def test_retries_once_on_transient_failure(self, mock_client, mock_sleep):
         """First call raises, second succeeds — only one retry allowed."""
         ok_response = _mock_anthropic_response({"overview": "ok", "sections": []})
-        mock_get_client.return_value.messages.create.side_effect = [
-            Exception("transient network error"),
-            ok_response,
-        ]
+        mock_client.messages.create = AsyncMock(
+            side_effect=[
+                Exception("transient network error"),
+                ok_response,
+            ]
+        )
         result = await generate_structured("prompt", SIMPLIFY_SCHEMA)
         assert result["overview"] == "ok"
         mock_sleep.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("app.services.anthropic_client.asyncio.sleep")
-    @patch("app.services.anthropic_client._get_client")
+    @patch("app.services.anthropic_client._client")
     async def test_raises_anthropic_service_error_after_all_attempts_fail(
-        self, mock_get_client, mock_sleep
+        self, mock_client, mock_sleep
     ):
         """Both attempts fail → AnthropicServiceError raised."""
-        mock_get_client.return_value.messages.create.side_effect = (
-            Exception("always fails")
+        mock_client.messages.create = AsyncMock(
+            side_effect=Exception("always fails")
         )
         with pytest.raises(AnthropicServiceError):
             await generate_structured("prompt", SIMPLIFY_SCHEMA)
 
     @pytest.mark.asyncio
-    @patch("app.services.anthropic_client._get_client")
-    async def test_raises_anthropic_service_error_on_empty_response(self, mock_get_client):
+    @patch("app.services.anthropic_client._client")
+    async def test_raises_anthropic_service_error_on_empty_response(self, mock_client):
         """Empty content list should cause AnthropicServiceError after retries."""
         empty_resp = MagicMock()
         empty_resp.content = []
-        mock_get_client.return_value.messages.create.return_value = empty_resp
+        mock_client.messages.create = AsyncMock(return_value=empty_resp)
         with pytest.raises(AnthropicServiceError):
             await generate_structured("prompt", SIMPLIFY_SCHEMA)
 
     @pytest.mark.asyncio
-    @patch("app.services.anthropic_client._get_client")
-    async def test_strips_markdown_fences(self, mock_get_client):
+    @patch("app.services.anthropic_client._client")
+    async def test_strips_markdown_fences(self, mock_client):
         """Model wrapping JSON in ```json fences should still parse correctly."""
         payload = {"overview": "ok", "sections": []}
         content_block = MagicMock()
         content_block.text = f"```json\n{json.dumps(payload)}\n```"
         resp = MagicMock()
         resp.content = [content_block]
-        mock_get_client.return_value.messages.create.return_value = resp
+        mock_client.messages.create = AsyncMock(return_value=resp)
         result = await generate_structured("prompt", SIMPLIFY_SCHEMA)
         assert result == payload
 
