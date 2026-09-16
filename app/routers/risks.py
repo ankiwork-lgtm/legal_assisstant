@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
+from app.config import MAX_TEXT_CHARS
+from app.limiter import limiter
 from app.models.schemas import ErrorDetail, ErrorResponse, RisksRequest, RisksResponse
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import RISKS_SCHEMA, build_risks_prompt
@@ -21,11 +23,13 @@ router = APIRouter(prefix="/api/analyze", tags=["analyze"])
     response_model=RisksResponse,
     responses={
         400: {"description": "Empty or invalid input"},
+        429: {"description": "Rate limit exceeded"},
         502: {"description": "AI service unavailable"},
     },
     summary="Identify and categorise risk clauses in a legal document",
 )
-async def analyze_risks(body: RisksRequest) -> RisksResponse | JSONResponse:
+@limiter.limit("20/minute")
+async def analyze_risks(request: Request, body: RisksRequest) -> RisksResponse | JSONResponse:
     """Accept raw document text and return risk clauses grouped by category.
 
     - **body.text** — The full document text to analyse.
@@ -51,9 +55,21 @@ async def analyze_risks(body: RisksRequest) -> RisksResponse | JSONResponse:
             ).model_dump(),
         )
 
+    if len(text) > MAX_TEXT_CHARS:
+        _logger.warning("Risks request — text too long  length=%d  limit=%d", len(text), MAX_TEXT_CHARS)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=ErrorResponse(
+                error=ErrorDetail(
+                    code="TEXT_TOO_LONG",
+                    message=f"The provided text exceeds the {MAX_TEXT_CHARS:,}-character limit.",
+                )
+            ).model_dump(),
+        )
+
     try:
         prompt = build_risks_prompt(text)
-        result = generate_structured(prompt, RISKS_SCHEMA)
+        result = await generate_structured(prompt, RISKS_SCHEMA)
         categories_count = len(result.get("categories", []))
         _logger.info("Risks complete — categories=%d", categories_count)
         return RisksResponse(**result)

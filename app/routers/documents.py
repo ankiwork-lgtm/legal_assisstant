@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 
+from app.config import MAX_TEXT_CHARS
 from app.models.schemas import ErrorDetail, ErrorResponse, ExtractResponse, ExtractTextRequest
 from app.services.pdf_extractor import CorruptPDFError, ScannedPDFError, extract_text
 from app.utils.logger import get_logger
@@ -127,6 +128,14 @@ async def extract_document(
             return _error(
                 code="EMPTY_TEXT",
                 message="The provided text is empty. Please paste your document text.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(stripped) > MAX_TEXT_CHARS:
+            _logger.warning("Extract request — pasted text too long  length=%d  limit=%d", len(stripped), MAX_TEXT_CHARS)
+            return _error(
+                code="TEXT_TOO_LONG",
+                message=f"The provided text exceeds the {MAX_TEXT_CHARS:,}-character limit.",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 

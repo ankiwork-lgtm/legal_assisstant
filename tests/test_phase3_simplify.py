@@ -18,6 +18,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.config import MAX_TEXT_CHARS
 from app.main import app
 
 client = TestClient(app)
@@ -251,6 +252,11 @@ class TestSimplifyEndpointErrors:
         resp = client.post("/api/analyze/simplify", json={"text": "   "})
         body = resp.json()
         assert body["error"]["code"] == "EMPTY_TEXT"
+
+    def test_text_exceeding_limit_returns_text_too_long(self):
+        resp = client.post("/api/analyze/simplify", json={"text": "x" * (MAX_TEXT_CHARS + 1)})
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "TEXT_TOO_LONG"
 
     def test_missing_text_field_returns_422(self):
         """Pydantic validation rejects a missing required field."""

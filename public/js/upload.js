@@ -2,6 +2,8 @@ import { extractDocument, MAX_FILE_SIZE } from "/js/api.js";
 import { saveDocument, getHistory, clearHistory } from "/js/storage.js";
 import { showError as showToast } from "/js/toast.js";
 
+const MAX_TEXT_CHARS = 50_000;
+
 // ── UUID helper ───────────────────────────────────────────────────────────────
 function generateId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -44,14 +46,19 @@ let activeMode = "file"; // "file" | "text"
 let selectedFile = null;
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
+const tabOrder = [tabFile, tabText];
+
 function activateTab(mode) {
   activeMode = mode;
   const isFile = mode === "file";
 
   tabFile.setAttribute("aria-selected", String(isFile));
   tabFile.classList.toggle("tab--active", isFile);
+  tabFile.setAttribute("tabindex", isFile ? "0" : "-1");
+
   tabText.setAttribute("aria-selected", String(!isFile));
   tabText.classList.toggle("tab--active", !isFile);
+  tabText.setAttribute("tabindex", isFile ? "-1" : "0");
 
   panelFile.hidden = !isFile;
   panelText.hidden = isFile;
@@ -63,12 +70,18 @@ function activateTab(mode) {
 tabFile.addEventListener("click", () => activateTab("file"));
 tabText.addEventListener("click", () => activateTab("text"));
 
-// Allow keyboard activation (Enter / Space)
-[tabFile, tabText].forEach((tab) => {
+// Allow keyboard activation (Enter / Space) and arrow-key focus navigation
+tabOrder.forEach((tab, i) => {
   tab.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       tab.click();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      tabOrder[(i + 1) % tabOrder.length].focus();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      tabOrder[(i - 1 + tabOrder.length) % tabOrder.length].focus();
     }
   });
 });
@@ -78,11 +91,19 @@ function updateSubmitState() {
   const ready =
     activeMode === "file"
       ? selectedFile !== null
-      : docTextArea.value.trim().length > 0;
+      : docTextArea.value.trim().length > 0 && docTextArea.value.trim().length <= MAX_TEXT_CHARS;
   submitBtn.disabled = !ready;
 }
 
-docTextArea.addEventListener("input", updateSubmitState);
+docTextArea.addEventListener("input", () => {
+  const textLength = docTextArea.value.trim().length;
+  if (textLength > MAX_TEXT_CHARS) {
+    showError(`Pasted text is too long (${textLength.toLocaleString()} characters). Maximum allowed length is ${MAX_TEXT_CHARS.toLocaleString()} characters.`);
+  } else {
+    hideError();
+  }
+  updateSubmitState();
+});
 
 // ── Error helpers ─────────────────────────────────────────────────────────────
 function showError(message) {
@@ -174,6 +195,10 @@ form.addEventListener("submit", async (e) => {
     const text = docTextArea.value.trim();
     if (!text) {
       showError("Please paste some document text before submitting.");
+      return;
+    }
+    if (text.length > MAX_TEXT_CHARS) {
+      showError(`Pasted text is too long (${text.length.toLocaleString()} characters). Maximum allowed length is ${MAX_TEXT_CHARS.toLocaleString()} characters.`);
       return;
     }
     formData.append("text", text);

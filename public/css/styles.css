@@ -566,6 +566,15 @@ a:hover {
     opacity: 0.6;
   }
 
+  .site-header nav a,
+  .history-item,
+  .button,
+  .tab,
+  .field input[type="text"],
+  .field textarea,
+  .drop-zone,
+  .drop-zone__upload-icon,
+  .compare-link,
   .toast {
     transition: none;
   }
@@ -999,5 +1008,126 @@ a:hover {
   .form-actions {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+
+/* ── analyze.html page-specific styles ── */
+
+.doc-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.doc-meta__label {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60ch;
+}
+
+.doc-meta__back {
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.tab-panel {
+  padding: 0;
+}
+
+/* Panel inner wrapper — provides consistent card-like container */
+.panel-inner {
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-card);
+}
+
+/* Generate button row */
+.generate-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Loading state */
+.loading-row {
+  display: none;
+}
+
+/* Error state */
+.error-msg {
+  display: none;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--color-high);
+  background: #fee2e2;
+  border: 1px solid var(--color-high);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+/* Result output area */
+.result-area {
+  display: none;
+  margin-top: 1rem;
+}
+
+/* Inline disclaimer (FR-8) */
+.disclaimer-inline {
+  margin-top: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-disclaimer-background);
+  border: 1px solid var(--color-disclaimer-border);
+  border-radius: 0.375rem;
+  color: var(--color-disclaimer-text);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+/* Q&A input bar */
+.qa-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-top: 1rem;
+}
+
+.qa-input-row textarea {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  resize: vertical;
+  min-height: 3rem;
+}
+
+/* Error page */
+.error-page {
+  padding: 2rem 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+.error-page p {
+  color: var(--color-muted);
+  margin: 0 0 1rem;
+}
+
+@media (max-width: 600px) {
+  .doc-meta__label {
+    max-width: 100%;
   }
 }

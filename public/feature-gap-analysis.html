@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LegalLens AI — Feature Gap Analysis</title>
+  <meta name="description" content="Comprehensive feature gap analysis for LegalLens AI: what is implemented vs. what can be added to improve legal document accessibility." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── TOKENS ─────────────────────────────────────────────── */
+    :root {
+      --navy-950: #050d1a;
+      --navy-900: #0a1628;
+      --navy-800: #0f2040;
+      --navy-700: #1a3258;
+      --navy-600: #243e70;
+      --slate-400: #94a3b8;
+      --slate-300: #cbd5e1;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --white: #ffffff;
+
+      --accent-blue: #3b82f6;
+      --accent-blue-light: #60a5fa;
+      --accent-purple: #8b5cf6;
+      --accent-teal: #14b8a6;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-emerald: #10b981;
+      --accent-orange: #f97316;
+
+      --p1-color: #3b82f6;
+      --p2-color: #8b5cf6;
+      --p3-color: #f97316;
+
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+
+      --shadow-card: 0 4px 24px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2);
+      --shadow-glow-blue: 0 0 32px rgba(59,130,246,0.25);
+      --shadow-glow-purple: 0 0 32px rgba(139,92,246,0.25);
+    }
+
+    /* ─── RESET ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--navy-950);
+      color: var(--slate-300);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── BACKGROUND GRADIENT MESH ───────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 0%, rgba(59,130,246,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 90% 20%, rgba(139,92,246,0.10) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 50% at 50% 100%, rgba(20,184,166,0.07) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── LAYOUT ─────────────────────────────────────────────── */
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ─── HERO HEADER ────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 72px 24px 56px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(59,130,246,0.12);
+      border: 1px solid rgba(59,130,246,0.3);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-blue-light);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .hero-badge svg { width: 14px; height: 14px; }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--accent-blue-light), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 1.1rem;
+      color: var(--slate-400);
+      max-width: 580px;
+      margin: 0 auto 40px;
+    }
+
+    /* ─── STATS ROW ──────────────────────────────────────────── */
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 60px;
+    }
+    .stat-chip {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 100px;
+      padding: 8px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stat-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-green { background: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald); }
+    .dot-blue  { background: var(--accent-blue); box-shadow: 0 0 6px var(--accent-blue); }
+    .dot-purple{ background: var(--accent-purple); box-shadow: 0 0 6px var(--accent-purple); }
+    .dot-orange{ background: var(--accent-orange); box-shadow: 0 0 6px var(--accent-orange); }
+
+    /* ─── SECTION TITLE ──────────────────────────────────────── */
+    .section-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .section-sub {
+      font-size: 0.95rem;
+      color: var(--slate-400);
+      margin-bottom: 28px;
+    }
+    .section-header { margin-bottom: 28px; }
+
+    /* ─── DIVIDER ────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      margin: 56px 0;
+    }
+
+    /* ─── IMPLEMENTED TABLE ──────────────────────────────────── */
+    .impl-table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius-lg);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    thead tr {
+      background: rgba(255,255,255,0.05);
+    }
+    th {
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--slate-400);
+      white-space: nowrap;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    td {
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      vertical-align: top;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    .fr-badge {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      background: rgba(59,130,246,0.15);
+      color: var(--accent-blue-light);
+      border: 1px solid rgba(59,130,246,0.3);
+      border-radius: var(--radius-sm);
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+    .status-done {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent-emerald);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .status-pending {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent-amber);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .endpoint-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent-teal);
+      background: rgba(20,184,166,0.08);
+      border: 1px solid rgba(20,184,166,0.2);
+      border-radius: var(--radius-sm);
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+    .client-only {
+      font-size: 12px;
+      color: var(--slate-400);
+      font-style: italic;
+    }
+
+    /* ─── FILTER TABS ────────────────────────────────────────── */
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .filter-tab {
+      padding: 8px 20px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: transparent;
+      color: var(--slate-400);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-tab:hover { background: rgba(255,255,255,0.06); color: var(--white); }
+    .filter-tab.active {
+      color: var(--white);
+      border-color: transparent;
+    }
+    .filter-tab.all.active   { background: rgba(255,255,255,0.12); }
+    .filter-tab.p1.active    { background: var(--p1-color); }
+    .filter-tab.p2.active    { background: var(--p2-color); }
+    .filter-tab.p3.active    { background: var(--p3-color); }
+
+    /* ─── FEATURE CARDS ──────────────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      animation: fadeUp 0.5s ease both;
+    }
+    .feature-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-card);
+    }
+    .feature-card.p1:hover { border-color: rgba(59,130,246,0.4); box-shadow: var(--shadow-glow-blue); }
+    .feature-card.p2:hover { border-color: rgba(139,92,246,0.4); box-shadow: var(--shadow-glow-purple); }
+    .feature-card.p3:hover { border-color: rgba(249,115,22,0.3); }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .card-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .icon-blue   { background: rgba(59,130,246,0.15); }
+    .icon-purple { background: rgba(139,92,246,0.15); }
+    .icon-teal   { background: rgba(20,184,166,0.15); }
+    .icon-amber  { background: rgba(245,158,11,0.15); }
+    .icon-rose   { background: rgba(244,63,94,0.15); }
+    .icon-emerald{ background: rgba(16,185,129,0.15); }
+    .icon-orange { background: rgba(249,115,22,0.15); }
+
+    .priority-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 100px;
+      flex-shrink: 0;
+    }
+    .priority-tag.p1 { background: rgba(59,130,246,0.15); color: var(--accent-blue-light); }
+    .priority-tag.p2 { background: rgba(139,92,246,0.15); color: #c4b5fd; }
+    .priority-tag.p3 { background: rgba(249,115,22,0.15); color: #fdba74; }
+
+    .card-fr {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--slate-400);
+      margin-bottom: 6px;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 8px;
+      line-height: 1.35;
+    }
+    .card-desc {
+      font-size: 0.875rem;
+      color: var(--slate-400);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .card-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .meta-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .meta-label {
+      color: var(--slate-400);
+      font-weight: 600;
+      white-space: nowrap;
+      min-width: 68px;
+    }
+    .meta-value { color: var(--slate-300); }
+    .meta-value code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--accent-teal);
+      background: rgba(20,184,166,0.08);
+      border: 1px solid rgba(20,184,166,0.2);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+    .effort-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+    .effort-bar {
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .effort-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1s ease;
+    }
+    .effort-fill.low    { width: 30%; background: var(--accent-emerald); }
+    .effort-fill.medium { width: 60%; background: var(--accent-amber); }
+    .effort-fill.high   { width: 90%; background: var(--accent-orange); }
+    .effort-label { font-size: 11px; color: var(--slate-400); white-space: nowrap; }
+
+    /* ─── SCHEMA BLOCK ───────────────────────────────────────── */
+    .schema-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--accent-blue-light);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: inherit;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    .schema-toggle:hover { opacity: 0.8; }
+    .schema-toggle svg { transition: transform 0.2s; }
+    .schema-toggle.open svg { transform: rotate(90deg); }
+    .schema-content {
+      display: none;
+      margin-top: 10px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #a5f3fc;
+      line-height: 1.8;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .schema-content.open { display: block; }
+
+    /* ─── UI STATUS TABLE ────────────────────────────────────── */
+    .ui-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .ui-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .ui-status-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .ui-done    { background: rgba(16,185,129,0.15); color: var(--accent-emerald); }
+    .ui-pending { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+    .ui-card-title { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 4px; }
+    .ui-card-desc  { font-size: 12px; color: var(--slate-400); }
+
+    /* ─── PRIORITY SUMMARY ───────────────────────────────────── */
+    .priority-table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius-lg);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .p-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .p-indicator.p1 { background: var(--p1-color); box-shadow: 0 0 6px var(--p1-color); }
+    .p-indicator.p2 { background: var(--p2-color); box-shadow: 0 0 6px var(--p2-color); }
+    .p-indicator.p3 { background: var(--p3-color); box-shadow: 0 0 6px var(--p3-color); }
+
+    .effort-pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .effort-pill.low    { background: rgba(16,185,129,0.12); color: var(--accent-emerald); }
+    .effort-pill.medium { background: rgba(245,158,11,0.12); color: var(--accent-amber); }
+    .effort-pill.high   { background: rgba(249,115,22,0.12); color: var(--accent-orange); }
+    .impact-pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .impact-pill.high   { background: rgba(244,63,94,0.12); color: #fb7185; }
+    .impact-pill.medium { background: rgba(139,92,246,0.12); color: #c4b5fd; }
+
+    /* ─── DISCLAIMER FOOTER ──────────────────────────────────── */
+    .disclaimer-banner {
+      margin-top: 60px;
+      background: rgba(245,158,11,0.07);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .disclaimer-banner svg { color: var(--accent-amber); flex-shrink: 0; margin-top: 2px; }
+    .disclaimer-text { font-size: 13px; color: var(--slate-400); line-height: 1.6; }
+    .disclaimer-text strong { color: var(--accent-amber); }
+
+    /* ─── ANIMATIONS ─────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hero           { animation: fadeUp 0.6s ease both; }
+    .stats-row      { animation: fadeUp 0.6s ease 0.1s both; }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .page-wrapper { padding: 0 16px 60px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .hero { padding: 48px 0 40px; }
+    }
+
+    /* ─── PRINT ──────────────────────────────────────────────── */
+    @media print {
+      body { background: white; color: #111; }
+      .feature-card, .ui-card { border: 1px solid #ddd; break-inside: avoid; }
+      .hero h1 span { -webkit-text-fill-color: #3b82f6; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+  <!-- ── HERO ── -->
+  <header class="hero">
+    <div class="hero-badge">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm.75 3.5v3.25l2.5 1.5-.75 1.25-3-1.75V4.5h1.25Z"/></svg>
+      Feature Gap Analysis
+    </div>
+    <h1>LegalLens AI<br /><span>Feature Roadmap</span></h1>
+    <p class="hero-sub">A comprehensive analysis of what is built, what is pending, and which new capabilities can be added to make legal information more accessible.</p>
+  </header>
+
+  <!-- ── STATS ── -->
+  <div class="stats-row">
+    <div class="stat-chip"><span class="dot dot-green"></span>8 Features Implemented</div>
+    <div class="stat-chip"><span class="dot dot-blue"></span>4 Quick Wins (P1)</div>
+    <div class="stat-chip"><span class="dot dot-purple"></span>5 Medium-Effort (P2)</div>
+    <div class="stat-chip"><span class="dot dot-orange"></span>4 Innovation Features (P3)</div>
+  </div>
+
+  <!-- ── IMPLEMENTED ── -->
+  <section id="implemented" aria-labelledby="impl-title">
+    <div class="section-header">
+      <h2 class="section-title" id="impl-title">✅ Already Implemented</h2>
+      <p class="section-sub">Core features live in production — FR-1 through FR-8.</p>
+    </div>
+    <div class="impl-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Feature</th>
+            <th>Endpoint</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="fr-badge">FR-1</span></td>
+            <td><strong style="color:var(--white)">Document Ingestion</strong><br /><span style="font-size:12px;color:var(--slate-400)">PDF upload or paste text; returns extracted text + metadata</span></td>
+            <td><span class="endpoint-code">POST /api/documents/extract</span></td>
+            <td><span class="status-done">✓ Done</span></td>
+          </tr>
+          <tr>
+            <td><span class="fr-badge">FR-2</span></td>
+            <td><strong style="color:var(--white)">Plain-Language Simplification</strong><br /><span style="font-size:12px;color:var(--slate-400)">Clause-by-clause plain-English rewrite with section references</span></td>
+            <td><span class="endpoint-code">POST /api/analyze/simplify</span></td>
+            <td><span class="status-done">✓ Done</span></td>
+          </tr>
+          <tr>
+            <td><span class="fr-badge">FR-3</span></td>
+            <td><strong style="color:var(--white)">Document Comparison</strong><br /><span style="font-size:12px;color:var(--slate-400)">Side-by-side diff of two docs; flags material differences</span></td>
+            <td><span class="endpoint-code">POST /api/analyze/compare</span></td>
+            <td><span class="status-done">✓ Done</span></td>
+          </tr>
+          <tr>
+            <td><span class="fr-badge">FR-4</span></td>
+            <td><strong style="color:var(--white)">Document-Grounded Q&amp;A</strong><br /><span style="font-size:12px;color:var(--slate-400)">Grounded answers with clause citations; conversational history support</span></td>
+            <td><span class="endpoint-code">POST /api/analyze/qa</span></td>
+            <td><span class="status-done">✓ Done</span></td>
+          </tr>
+          <tr>
+            <td><span class="fr-badge">FR-5</span></td>
+            <td><strong style="color:var(--white)">Risk &amp; Clause Highlighting</strong><br /><span style="font-size:12px;color:var(--slate-400)">Severity-tagged (high/medium/low/info) risk items, grouped by category</span></td>
+            <td><span class="endpoint-code">POST /api/analyze/risks</span></td>
+            <td><span class="status-done">✓ Done</span></td>
+          </tr>
+          <tr>
+            <td><span class="fr-badge">FR-6</span></td>
+            <td><strong style="color:var(--white)">Checklist Generator</strong><br /><span style="font-size:12px;color:var(--slate-400)">"Ask a lawyer" and "verify yourself" actionable checklist items</span></td>
+            <td><span class="endpoint-code">POST /api/analyze/checklist</span></td>
+            <td><span class="status-done">✓ Done</span></td>
+          </tr>
+          <tr>
+            <td><span class="fr-badge">FR-7</span></td>
+            <td><strong style="color:var(--white)">Session History</strong><br /><span style="font-size:12px;color:var(--slate-400)">localStorage-based recent documents with clear history support</span></td>
+            <td><span class="client-only">Client-side only</span></td>
+            <td><span class="status-done">✓ Done</span></td>
+          </tr>
+          <tr>
+            <td><span class="fr-badge">FR-8</span></td>
+            <td><strong style="color:var(--white)">Legal Disclaimer System</strong><br /><span style="font-size:12px;color:var(--slate-400)">Injected into every AI prompt; never fabricates legal advice</span></td>
+            <td><span class="client-only">Prompt system + UI</span></td>
+            <td><span class="status-done">✓ Done</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── UI TASKS ── -->
+  <section id="ui-tasks" aria-labelledby="ui-title">
+    <div class="section-header">
+      <h2 class="section-title" id="ui-title">🎨 UI Redesign Status</h2>
+      <p class="section-sub">Frontend polish tasks from the existing redesign plan.</p>
+    </div>
+    <div class="ui-grid">
+      <div class="ui-card">
+        <div class="ui-status-icon ui-done">✓</div>
+        <div>
+          <div class="ui-card-title">Visual Foundation</div>
+          <div class="ui-card-desc">Navy/slate color system, typography, tokens, shared layout components.</div>
+        </div>
+      </div>
+      <div class="ui-card">
+        <div class="ui-status-icon ui-done">✓</div>
+        <div>
+          <div class="ui-card-title">Upload &amp; Home Page</div>
+          <div class="ui-card-desc">Drag-and-drop upload, paste-text tab, recent document history redesign.</div>
+        </div>
+      </div>
+      <div class="ui-card">
+        <div class="ui-status-icon ui-pending">⏳</div>
+        <div>
+          <div class="ui-card-title">Analysis Workspace</div>
+          <div class="ui-card-desc">Tabs, severity badges, Q&amp;A message hierarchy, result panels — pending.</div>
+        </div>
+      </div>
+      <div class="ui-card">
+        <div class="ui-status-icon ui-pending">⏳</div>
+        <div>
+          <div class="ui-card-title">Comparison Workspace</div>
+          <div class="ui-card-desc">Balanced Document A/B panels, accessible diff table, mobile layout — pending.</div>
+        </div>
+      </div>
+      <div class="ui-card">
+        <div class="ui-status-icon ui-pending">⏳</div>
+        <div>
+          <div class="ui-card-title">End-to-End Validation</div>
+          <div class="ui-card-desc">Cross-page regression, keyboard nav, contrast, reduced-motion — pending.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── NEW FEATURES ── -->
+  <section id="new-features" aria-labelledby="new-title">
+    <div class="section-header">
+      <h2 class="section-title" id="new-title">🚀 Proposed New Features</h2>
+      <p class="section-sub">14 features that can be built on top of the existing infrastructure.</p>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="filter-tabs" role="tablist" aria-label="Filter features by priority">
+      <button class="filter-tab all active" data-filter="all" role="tab" aria-selected="true">All Features</button>
+      <button class="filter-tab p1" data-filter="p1" role="tab" aria-selected="false">🔵 P1 — Quick Wins</button>
+      <button class="filter-tab p2" data-filter="p2" role="tab" aria-selected="false">🟣 P2 — Medium Effort</button>
+      <button class="filter-tab p3" data-filter="p3" role="tab" aria-selected="false">🟠 P3 — Innovation</button>
+    </div>
+
+    <div class="features-grid" id="features-grid">
+
+      <!-- FR-9 -->
+      <article class="feature-card p1" data-priority="p1" aria-labelledby="fr9-title">
+        <div class="card-top">
+          <div class="card-icon icon-teal">📅</div>
+          <span class="priority-tag p1">P1 · Quick Win</span>
+        </div>
+        <div class="card-fr">FR-9</div>
+        <h3 class="card-title" id="fr9-title">Obligation &amp; Deadline Tracker</h3>
+        <p class="card-desc">Extract every obligation, deadline, and date-bound commitment from the document and present them as a structured, scannable timeline with party attribution.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Endpoint</span><span class="meta-value"><code>POST /api/analyze/obligations</code></span></div>
+          <div class="meta-row"><span class="meta-label">Builds on</span><span class="meta-value">FR-5 risk prompt pattern</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill low"></div></div>
+              <span class="effort-label">Low</span>
+            </div>
+          </div>
+        </div>
+        <button class="schema-toggle" onclick="toggleSchema(this)" aria-expanded="false">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>
+          View output schema
+        </button>
+        <pre class="schema-content">{
+  "obligations": [
+    {
+      "party": "Tenant",
+      "action": "Pay monthly rent",
+      "deadline": "1st of each month",
+      "clause_ref": "§4.2",
+      "consequence_if_missed": "Late fee of $100"
+    }
+  ],
+  "key_dates": [
+    {
+      "label": "Lease start",
+      "date": "2024-03-01",
+      "clause_ref": "§2.1"
+    }
+  ]
+}</pre>
+      </article>
+
+      <!-- FR-10 -->
+      <article class="feature-card p1" data-priority="p1" aria-labelledby="fr10-title">
+        <div class="card-top">
+          <div class="card-icon icon-blue">🏷️</div>
+          <span class="priority-tag p1">P1 · Quick Win</span>
+        </div>
+        <div class="card-fr">FR-10</div>
+        <h3 class="card-title" id="fr10-title">Document-Type Classifier</h3>
+        <p class="card-desc">Automatically detect the document type (NDA, lease, SaaS terms, employment contract), identify parties, jurisdiction clues, and effective date — surfaced as a badge in the workspace header.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Endpoint</span><span class="meta-value"><code>POST /api/analyze/classify</code></span></div>
+          <div class="meta-row"><span class="meta-label">Builds on</span><span class="meta-value">Lightweight first-step prompt</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill low"></div></div>
+              <span class="effort-label">Low</span>
+            </div>
+          </div>
+        </div>
+        <button class="schema-toggle" onclick="toggleSchema(this)" aria-expanded="false">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>
+          View output schema
+        </button>
+        <pre class="schema-content">{
+  "document_type": "Non-Disclosure Agreement",
+  "sub_type": "Mutual NDA",
+  "likely_jurisdiction": "United States (Delaware)",
+  "confidence": "high",
+  "parties_identified": ["Acme Corp", "John Doe"],
+  "effective_date": "2024-01-15"
+}</pre>
+      </article>
+
+      <!-- FR-11 -->
+      <article class="feature-card p1" data-priority="p1" aria-labelledby="fr11-title">
+        <div class="card-top">
+          <div class="card-icon icon-emerald">📤</div>
+          <span class="priority-tag p1">P1 · Quick Win</span>
+        </div>
+        <div class="card-fr">FR-11</div>
+        <h3 class="card-title" id="fr11-title">Export &amp; Share Results</h3>
+        <p class="card-desc">Let users download any analysis panel as a formatted PDF, or copy as Markdown. Pure frontend — no new API endpoint needed. Uses CSS print media + Blob API.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Endpoint</span><span class="meta-value">None — frontend only</span></div>
+          <div class="meta-row"><span class="meta-label">Formats</span><span class="meta-value">PDF, Markdown clipboard</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill low"></div></div>
+              <span class="effort-label">Low</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FR-12 -->
+      <article class="feature-card p1" data-priority="p1" aria-labelledby="fr12-title">
+        <div class="card-top">
+          <div class="card-icon icon-amber">🔍</div>
+          <span class="priority-tag p1">P1 · Quick Win</span>
+        </div>
+        <div class="card-fr">FR-12</div>
+        <h3 class="card-title" id="fr12-title">Highlighted Clause Navigator</h3>
+        <p class="card-desc">Clicking a risk item or simplified clause scrolls to and highlights the exact excerpt in a split-pane document viewer. The <code>clause_ref</code> field is already returned by all analysis endpoints.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Endpoint</span><span class="meta-value">None — UI only</span></div>
+          <div class="meta-row"><span class="meta-label">Builds on</span><span class="meta-value">Existing <code>clause_ref</code> fields</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill low"></div></div>
+              <span class="effort-label">Low</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FR-13 -->
+      <article class="feature-card p2" data-priority="p2" aria-labelledby="fr13-title">
+        <div class="card-top">
+          <div class="card-icon icon-purple">📋</div>
+          <span class="priority-tag p2">P2 · Medium</span>
+        </div>
+        <div class="card-fr">FR-13</div>
+        <h3 class="card-title" id="fr13-title">Lawyer-Preparation Report</h3>
+        <p class="card-desc">Synthesise all analysis outputs into a single printable briefing document — executive overview, top risks, must-ask questions, and recommended action list — to bring to an attorney consultation.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Endpoint</span><span class="meta-value"><code>POST /api/analyze/report</code></span></div>
+          <div class="meta-row"><span class="meta-label">Builds on</span><span class="meta-value">FR-2, FR-5, FR-6 outputs</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill medium"></div></div>
+              <span class="effort-label">Medium</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FR-14 -->
+      <article class="feature-card p2" data-priority="p2" aria-labelledby="fr14-title">
+        <div class="card-top">
+          <div class="card-icon icon-rose">💬</div>
+          <span class="priority-tag p2">P2 · Medium</span>
+        </div>
+        <div class="card-fr">FR-14</div>
+        <h3 class="card-title" id="fr14-title">Clause Negotiation Suggestions</h3>
+        <p class="card-desc">For each high/medium risk clause, suggest alternative wording or negotiation angles the user could raise with the other party — framed as "possible angles to discuss with your attorney."</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Approach</span><span class="meta-value">Augment FR-5 risks schema</span></div>
+          <div class="meta-row"><span class="meta-label">New field</span><span class="meta-value"><code>suggested_alternatives[]</code></span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill medium"></div></div>
+              <span class="effort-label">Medium</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FR-15 -->
+      <article class="feature-card p2" data-priority="p2" aria-labelledby="fr15-title">
+        <div class="card-top">
+          <div class="card-icon icon-blue">📦</div>
+          <span class="priority-tag p2">P2 · Medium</span>
+        </div>
+        <div class="card-fr">FR-15</div>
+        <h3 class="card-title" id="fr15-title">Multi-Document Batch Analysis</h3>
+        <p class="card-desc">Upload up to 5 documents and run risk analysis across all of them, producing a consolidated cross-document report that detects conflicting clauses between related agreements.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Endpoint</span><span class="meta-value"><code>POST /api/analyze/batch-risks</code></span></div>
+          <div class="meta-row"><span class="meta-label">Builds on</span><span class="meta-value">FR-5 risk prompt (loop + merge)</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill medium"></div></div>
+              <span class="effort-label">Medium</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FR-16 -->
+      <article class="feature-card p2" data-priority="p2" aria-labelledby="fr16-title">
+        <div class="card-top">
+          <div class="card-icon icon-teal">📖</div>
+          <span class="priority-tag p2">P2 · Medium</span>
+        </div>
+        <div class="card-fr">FR-16</div>
+        <h3 class="card-title" id="fr16-title">Legal Glossary Builder</h3>
+        <p class="card-desc">Extract all legal terms of art from the document and generate a user-friendly glossary with plain-English definitions and document context citations.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Endpoint</span><span class="meta-value"><code>POST /api/analyze/glossary</code></span></div>
+          <div class="meta-row"><span class="meta-label">UI</span><span class="meta-value">Floating panel or inline tooltips</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill medium"></div></div>
+              <span class="effort-label">Medium</span>
+            </div>
+          </div>
+        </div>
+        <button class="schema-toggle" onclick="toggleSchema(this)" aria-expanded="false">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>
+          View output schema
+        </button>
+        <pre class="schema-content">{
+  "terms": [
+    {
+      "term": "Indemnification",
+      "plain_definition": "A promise to cover the other party's losses if something goes wrong.",
+      "context_in_document": "§7.3 requires Party A to indemnify Party B..."
+    }
+  ]
+}</pre>
+      </article>
+
+      <!-- FR-17 -->
+      <article class="feature-card p2" data-priority="p2" aria-labelledby="fr17-title">
+        <div class="card-top">
+          <div class="card-icon icon-amber">🌐</div>
+          <span class="priority-tag p2">P2 · Medium</span>
+        </div>
+        <div class="card-fr">FR-17</div>
+        <h3 class="card-title" id="fr17-title">Jurisdiction-Aware Context Hints</h3>
+        <p class="card-desc">When a jurisdiction is detected (FR-10), surface brief contextual notes on how that jurisdiction typically treats key clauses. Strictly framed as general context, not jurisdiction-specific legal advice.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Depends on</span><span class="meta-value">FR-10 classifier output</span></div>
+          <div class="meta-row"><span class="meta-label">UI</span><span class="meta-value">Expandable "Context Notes" callout</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill medium"></div></div>
+              <span class="effort-label">Medium</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FR-18 -->
+      <article class="feature-card p3" data-priority="p3" aria-labelledby="fr18-title">
+        <div class="card-top">
+          <div class="card-icon icon-orange">🎭</div>
+          <span class="priority-tag p3">P3 · Innovation</span>
+        </div>
+        <div class="card-fr">FR-18</div>
+        <h3 class="card-title" id="fr18-title">"What If" Scenario Simulator</h3>
+        <p class="card-desc">Let users pose hypotheticals ("What happens if I miss the 30-day notice period?") and receive a clause-by-clause consequence chain grounded in the document — not general legal knowledge.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Approach</span><span class="meta-value">New <code>build_scenario_prompt()</code> branch</span></div>
+          <div class="meta-row"><span class="meta-label">Builds on</span><span class="meta-value">FR-4 QA infrastructure</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill high"></div></div>
+              <span class="effort-label">High</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FR-19 -->
+      <article class="feature-card p3" data-priority="p3" aria-labelledby="fr19-title">
+        <div class="card-top">
+          <div class="card-icon icon-rose">📊</div>
+          <span class="priority-tag p3">P3 · Innovation</span>
+        </div>
+        <div class="card-fr">FR-19</div>
+        <h3 class="card-title" id="fr19-title">Contract Health Score</h3>
+        <p class="card-desc">Generate an overall 0–100 health score based on risk density, clause fairness, and completeness — broken down by category and visualised as a gauge chart in the workspace header.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Approach</span><span class="meta-value">Aggregate FR-5 output + scoring prompt</span></div>
+          <div class="meta-row"><span class="meta-label">UI</span><span class="meta-value">Gauge / donut chart</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill high"></div></div>
+              <span class="effort-label">Medium–High</span>
+            </div>
+          </div>
+        </div>
+        <button class="schema-toggle" onclick="toggleSchema(this)" aria-expanded="false">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>
+          View output schema
+        </button>
+        <pre class="schema-content">{
+  "overall_score": 62,
+  "grade": "C+",
+  "breakdown": {
+    "financial": 45,
+    "termination": 70,
+    "liability": 55,
+    "privacy": 80
+  },
+  "interpretation": "Several high-severity clauses warrant review..."
+}</pre>
+      </article>
+
+      <!-- FR-20 -->
+      <article class="feature-card p3" data-priority="p3" aria-labelledby="fr20-title">
+        <div class="card-top">
+          <div class="card-icon icon-teal">🔄</div>
+          <span class="priority-tag p3">P3 · Innovation</span>
+        </div>
+        <div class="card-fr">FR-20</div>
+        <h3 class="card-title" id="fr20-title">Version Diffing / Redline</h3>
+        <p class="card-desc">Given two versions of the <em>same</em> contract, produce a redline-style analysis showing exactly which clauses changed and the risk implication of each edit — distinct from FR-3 which compares different document types.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Approach</span><span class="meta-value">Version-aware compare prompt</span></div>
+          <div class="meta-row"><span class="meta-label">Builds on</span><span class="meta-value">FR-3 compare infrastructure</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill high"></div></div>
+              <span class="effort-label">High</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FR-21 -->
+      <article class="feature-card p3" data-priority="p3" aria-labelledby="fr21-title">
+        <div class="card-top">
+          <div class="card-icon icon-purple">🗣️</div>
+          <span class="priority-tag p3">P3 · Innovation</span>
+        </div>
+        <div class="card-fr">FR-21</div>
+        <h3 class="card-title" id="fr21-title">Conversational Legal Intake</h3>
+        <p class="card-desc">Guide users through a structured intake conversation ("Tell me about your situation") without requiring a document upload. Produces a filled-in checklist of questions to bring to a lawyer.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Endpoint</span><span class="meta-value"><code>POST /api/intake/chat</code></span></div>
+          <div class="meta-row"><span class="meta-label">UI</span><span class="meta-value">New <code>/intake.html</code> chat page</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill high"></div></div>
+              <span class="effort-label">High</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FR-22 -->
+      <article class="feature-card p3" data-priority="p3" aria-labelledby="fr22-title">
+        <div class="card-top">
+          <div class="card-icon icon-emerald">📚</div>
+          <span class="priority-tag p3">P3 · Innovation</span>
+        </div>
+        <div class="card-fr">FR-22</div>
+        <h3 class="card-title" id="fr22-title">Standard Clause Template Library</h3>
+        <p class="card-desc">Bundle standard NDA confidentiality, liability cap, and indemnification clause templates as static JSON. Let users compare their document's clauses against a "standard" baseline with a single click.</p>
+        <div class="card-meta">
+          <div class="meta-row"><span class="meta-label">Approach</span><span class="meta-value">Static JSON + FR-3 compare</span></div>
+          <div class="meta-row"><span class="meta-label">UI</span><span class="meta-value">"Compare to Standard" button per clause</span></div>
+          <div class="meta-row">
+            <span class="meta-label">Effort</span>
+            <div class="effort-bar-wrap">
+              <div class="effort-bar"><div class="effort-fill high"></div></div>
+              <span class="effort-label">High</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+    </div><!-- /features-grid -->
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── PRIORITY SUMMARY TABLE ── -->
+  <section id="summary" aria-labelledby="summary-title">
+    <div class="section-header">
+      <h2 class="section-title" id="summary-title">📌 Priority Summary</h2>
+      <p class="section-sub">Recommended implementation order by effort and impact.</p>
+    </div>
+    <div class="priority-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Priority</th>
+            <th>#</th>
+            <th>Feature</th>
+            <th>Effort</th>
+            <th>Impact</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="p-indicator p1"></span>P1</td>
+            <td><span class="fr-badge">FR-9</span></td>
+            <td>Obligation &amp; Deadline Tracker</td>
+            <td><span class="effort-pill low">Low</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p1"></span>P1</td>
+            <td><span class="fr-badge">FR-10</span></td>
+            <td>Document-Type Classifier</td>
+            <td><span class="effort-pill low">Low</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p1"></span>P1</td>
+            <td><span class="fr-badge">FR-11</span></td>
+            <td>Export &amp; Share Results</td>
+            <td><span class="effort-pill low">Low</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p1"></span>P1</td>
+            <td><span class="fr-badge">FR-12</span></td>
+            <td>Highlighted Clause Navigator</td>
+            <td><span class="effort-pill low">Low</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p2"></span>P2</td>
+            <td><span class="fr-badge">FR-13</span></td>
+            <td>Lawyer-Preparation Report</td>
+            <td><span class="effort-pill medium">Medium</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p2"></span>P2</td>
+            <td><span class="fr-badge">FR-14</span></td>
+            <td>Clause Negotiation Suggestions</td>
+            <td><span class="effort-pill medium">Medium</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p2"></span>P2</td>
+            <td><span class="fr-badge">FR-16</span></td>
+            <td>Legal Glossary Builder</td>
+            <td><span class="effort-pill medium">Medium</span></td>
+            <td><span class="impact-pill medium">Medium</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p2"></span>P2</td>
+            <td><span class="fr-badge">FR-15</span></td>
+            <td>Multi-Document Batch Analysis</td>
+            <td><span class="effort-pill medium">Medium</span></td>
+            <td><span class="impact-pill medium">Medium</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p2"></span>P2</td>
+            <td><span class="fr-badge">FR-17</span></td>
+            <td>Jurisdiction-Aware Context Hints</td>
+            <td><span class="effort-pill medium">Medium</span></td>
+            <td><span class="impact-pill medium">Medium</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p3"></span>P3</td>
+            <td><span class="fr-badge">FR-19</span></td>
+            <td>Contract Health Score</td>
+            <td><span class="effort-pill high">Med–High</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p3"></span>P3</td>
+            <td><span class="fr-badge">FR-18</span></td>
+            <td>"What If" Scenario Simulator</td>
+            <td><span class="effort-pill high">High</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p3"></span>P3</td>
+            <td><span class="fr-badge">FR-20</span></td>
+            <td>Version Diffing / Redline</td>
+            <td><span class="effort-pill high">High</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p3"></span>P3</td>
+            <td><span class="fr-badge">FR-21</span></td>
+            <td>Conversational Legal Intake</td>
+            <td><span class="effort-pill high">High</span></td>
+            <td><span class="impact-pill high">High</span></td>
+          </tr>
+          <tr>
+            <td><span class="p-indicator p3"></span>P3</td>
+            <td><span class="fr-badge">FR-22</span></td>
+            <td>Standard Clause Template Library</td>
+            <td><span class="effort-pill high">High</span></td>
+            <td><span class="impact-pill medium">Medium</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── DISCLAIMER ── -->
+  <div class="disclaimer-banner" role="note" aria-label="Legal disclaimer">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" color="var(--accent-amber)">
+      <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/>
+    </svg>
+    <p class="disclaimer-text">
+      <strong>Legal Disclaimer:</strong> LegalLens AI provides legal <em>information</em> only — not legal <em>advice</em>. All AI-generated outputs are informational and do not constitute legal counsel, nor do they create an attorney–client relationship. Users should always consult a qualified attorney before making decisions with legal consequences.
+    </p>
+  </div>
+
+</div><!-- /page-wrapper -->
+
+<script>
+  /* ── Filter tab logic ── */
+  const tabs = document.querySelectorAll('.filter-tab');
+  const cards = document.querySelectorAll('.feature-card[data-priority]');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const filter = tab.dataset.filter;
+
+      tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected','true');
+
+      cards.forEach((card, i) => {
+        const show = filter === 'all' || card.dataset.priority === filter;
+        card.style.display = show ? '' : 'none';
+        if (show) {
+          card.style.animationDelay = `${i * 0.04}s`;
+          card.style.animation = 'none';
+          void card.offsetWidth; // reflow
+          card.style.animation = '';
+        }
+      });
+    });
+  });
+
+  /* ── Schema accordion ── */
+  function toggleSchema(btn) {
+    const pre = btn.nextElementSibling;
+    const isOpen = pre.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+    btn.setAttribute('aria-expanded', String(isOpen));
+  }
+
+  /* ── Animate effort bars on load ── */
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.effort-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0';
+      requestAnimationFrame(() => {
+        setTimeout(() => { el.style.width = w; }, 300);
+      });
+    });
+  });
+</script>
+</body>
+</html>

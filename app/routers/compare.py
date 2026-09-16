@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
+from app.config import MAX_TEXT_CHARS
+from app.limiter import limiter
 from app.models.schemas import CompareRequest, CompareResponse, ErrorDetail, ErrorResponse
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import COMPARE_SCHEMA, build_compare_prompt
@@ -21,11 +23,13 @@ router = APIRouter(prefix="/api/analyze", tags=["analyze"])
     response_model=CompareResponse,
     responses={
         400: {"description": "Empty or invalid input"},
+        429: {"description": "Rate limit exceeded"},
         502: {"description": "AI service unavailable"},
     },
     summary="Compare two legal documents and highlight similarities and differences",
 )
-async def analyze_compare(body: CompareRequest) -> CompareResponse | JSONResponse:
+@limiter.limit("20/minute")
+async def analyze_compare(request: Request, body: CompareRequest) -> CompareResponse | JSONResponse:
     """Accept two document texts and return a structured comparison.
 
     - **body.doc_a** — Full text of the first document.
@@ -77,6 +81,23 @@ async def analyze_compare(body: CompareRequest) -> CompareResponse | JSONRespons
             ).model_dump(),
         )
 
+    if len(doc_a) > MAX_TEXT_CHARS or len(doc_b) > MAX_TEXT_CHARS:
+        _logger.warning(
+            "Compare request — document text too long  doc_a_len=%d  doc_b_len=%d  limit=%d",
+            len(doc_a),
+            len(doc_b),
+            MAX_TEXT_CHARS,
+        )
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=ErrorResponse(
+                error=ErrorDetail(
+                    code="TEXT_TOO_LONG",
+                    message=f"Each document must not exceed the {MAX_TEXT_CHARS:,}-character limit.",
+                )
+            ).model_dump(),
+        )
+
     try:
         prompt = build_compare_prompt(
             doc_a=doc_a,
@@ -84,7 +105,7 @@ async def analyze_compare(body: CompareRequest) -> CompareResponse | JSONRespons
             label_a=body.label_a,
             label_b=body.label_b,
         )
-        result = generate_structured(prompt, COMPARE_SCHEMA)
+        result = await generate_structured(prompt, COMPARE_SCHEMA)
         shared_count = len(result.get("shared_topics", []))
         only_a_count = len(result.get("only_in_a", []))
         only_b_count = len(result.get("only_in_b", []))

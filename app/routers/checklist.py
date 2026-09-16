@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
+from app.config import MAX_TEXT_CHARS
+from app.limiter import limiter
 from app.models.schemas import ChecklistRequest, ChecklistResponse, ErrorDetail, ErrorResponse
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import CHECKLIST_SCHEMA, build_checklist_prompt
@@ -21,11 +23,13 @@ router = APIRouter(prefix="/api/analyze", tags=["analyze"])
     response_model=ChecklistResponse,
     responses={
         400: {"description": "Empty or invalid input"},
+        429: {"description": "Rate limit exceeded"},
         502: {"description": "AI service unavailable"},
     },
     summary="Generate an actionable pre-signing checklist from a legal document",
 )
-async def analyze_checklist(body: ChecklistRequest) -> ChecklistResponse | JSONResponse:
+@limiter.limit("20/minute")
+async def analyze_checklist(request: Request, body: ChecklistRequest) -> ChecklistResponse | JSONResponse:
     """Accept raw document text and return an actionable checklist.
 
     - **body.text** — The full document text to analyse.
@@ -49,9 +53,21 @@ async def analyze_checklist(body: ChecklistRequest) -> ChecklistResponse | JSONR
             ).model_dump(),
         )
 
+    if len(text) > MAX_TEXT_CHARS:
+        _logger.warning("Checklist request — text too long  length=%d  limit=%d", len(text), MAX_TEXT_CHARS)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=ErrorResponse(
+                error=ErrorDetail(
+                    code="TEXT_TOO_LONG",
+                    message=f"The provided text exceeds the {MAX_TEXT_CHARS:,}-character limit.",
+                )
+            ).model_dump(),
+        )
+
     try:
         prompt = build_checklist_prompt(text)
-        result = generate_structured(prompt, CHECKLIST_SCHEMA)
+        result = await generate_structured(prompt, CHECKLIST_SCHEMA)
         ask_count = len(result.get("ask_lawyer", []))
         verify_count = len(result.get("verify_yourself", []))
         _logger.info("Checklist complete — ask_lawyer=%d  verify_yourself=%d", ask_count, verify_count)

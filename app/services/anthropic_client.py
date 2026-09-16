@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any
@@ -68,7 +69,7 @@ def _get_client() -> anthropic.Anthropic:
 # ---------------------------------------------------------------------------
 
 
-def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+async def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
     """Call Anthropic Claude and return a structured JSON object matching *schema*.
 
     Parameters
@@ -109,7 +110,8 @@ def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         t0 = time.perf_counter()
         try:
-            response = client.messages.create(
+            response = await asyncio.to_thread(
+                client.messages.create,
                 model=settings.anthropic_model,
                 max_tokens=_MAX_TOKENS,
                 system=system_prompt,
@@ -150,7 +152,7 @@ def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
             last_exc = exc
             if attempt < _MAX_ATTEMPTS:
                 _logger.info("Retrying in 1 s…")
-                time.sleep(1.0)
+                await asyncio.sleep(1.0)
             continue
 
     _logger.error(

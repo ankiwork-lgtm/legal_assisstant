@@ -63,41 +63,45 @@ def _mock_anthropic_response(payload: dict) -> MagicMock:
 class TestGenerateStructured:
     """Tests for generate_structured() — Anthropic API is always mocked."""
 
+    @pytest.mark.asyncio
     @patch("app.services.anthropic_client._get_client")
-    def test_returns_parsed_dict_on_success(self, mock_get_client):
+    async def test_returns_parsed_dict_on_success(self, mock_get_client):
         expected = {"overview": "test", "sections": []}
         mock_get_client.return_value.messages.create.return_value = (
             _mock_anthropic_response(expected)
         )
-        result = generate_structured("some prompt", SIMPLIFY_SCHEMA)
+        result = await generate_structured("some prompt", SIMPLIFY_SCHEMA)
         assert result == expected
 
+    @pytest.mark.asyncio
     @patch("app.services.anthropic_client._get_client")
-    def test_calls_create_once_on_success(self, mock_get_client):
+    async def test_calls_create_once_on_success(self, mock_get_client):
         mock_get_client.return_value.messages.create.return_value = (
             _mock_anthropic_response(
                 {"answer": "yes", "found_in_document": True, "supporting_clause_ref": None}
             )
         )
-        generate_structured("prompt", QA_SCHEMA)
+        await generate_structured("prompt", QA_SCHEMA)
         assert mock_get_client.return_value.messages.create.call_count == 1
 
-    @patch("app.services.anthropic_client.time.sleep")
+    @pytest.mark.asyncio
+    @patch("app.services.anthropic_client.asyncio.sleep")
     @patch("app.services.anthropic_client._get_client")
-    def test_retries_once_on_transient_failure(self, mock_get_client, mock_sleep):
+    async def test_retries_once_on_transient_failure(self, mock_get_client, mock_sleep):
         """First call raises, second succeeds — only one retry allowed."""
         ok_response = _mock_anthropic_response({"overview": "ok", "sections": []})
         mock_get_client.return_value.messages.create.side_effect = [
             Exception("transient network error"),
             ok_response,
         ]
-        result = generate_structured("prompt", SIMPLIFY_SCHEMA)
+        result = await generate_structured("prompt", SIMPLIFY_SCHEMA)
         assert result["overview"] == "ok"
         mock_sleep.assert_called_once()
 
-    @patch("app.services.anthropic_client.time.sleep")
+    @pytest.mark.asyncio
+    @patch("app.services.anthropic_client.asyncio.sleep")
     @patch("app.services.anthropic_client._get_client")
-    def test_raises_anthropic_service_error_after_all_attempts_fail(
+    async def test_raises_anthropic_service_error_after_all_attempts_fail(
         self, mock_get_client, mock_sleep
     ):
         """Both attempts fail → AnthropicServiceError raised."""
@@ -105,19 +109,21 @@ class TestGenerateStructured:
             Exception("always fails")
         )
         with pytest.raises(AnthropicServiceError):
-            generate_structured("prompt", SIMPLIFY_SCHEMA)
+            await generate_structured("prompt", SIMPLIFY_SCHEMA)
 
+    @pytest.mark.asyncio
     @patch("app.services.anthropic_client._get_client")
-    def test_raises_anthropic_service_error_on_empty_response(self, mock_get_client):
+    async def test_raises_anthropic_service_error_on_empty_response(self, mock_get_client):
         """Empty content list should cause AnthropicServiceError after retries."""
         empty_resp = MagicMock()
         empty_resp.content = []
         mock_get_client.return_value.messages.create.return_value = empty_resp
         with pytest.raises(AnthropicServiceError):
-            generate_structured("prompt", SIMPLIFY_SCHEMA)
+            await generate_structured("prompt", SIMPLIFY_SCHEMA)
 
+    @pytest.mark.asyncio
     @patch("app.services.anthropic_client._get_client")
-    def test_strips_markdown_fences(self, mock_get_client):
+    async def test_strips_markdown_fences(self, mock_get_client):
         """Model wrapping JSON in ```json fences should still parse correctly."""
         payload = {"overview": "ok", "sections": []}
         content_block = MagicMock()
@@ -125,7 +131,7 @@ class TestGenerateStructured:
         resp = MagicMock()
         resp.content = [content_block]
         mock_get_client.return_value.messages.create.return_value = resp
-        result = generate_structured("prompt", SIMPLIFY_SCHEMA)
+        result = await generate_structured("prompt", SIMPLIFY_SCHEMA)
         assert result == payload
 
 

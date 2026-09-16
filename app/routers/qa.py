@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
+from app.config import MAX_TEXT_CHARS
+from app.limiter import limiter
 from app.models.schemas import ErrorDetail, ErrorResponse, QARequest, QAResponse
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import QA_SCHEMA, build_qa_prompt
@@ -21,11 +23,13 @@ router = APIRouter(prefix="/api/analyze", tags=["analyze"])
     response_model=QAResponse,
     responses={
         400: {"description": "Empty or invalid input"},
+        429: {"description": "Rate limit exceeded"},
         502: {"description": "AI service unavailable"},
     },
     summary="Answer a question grounded in the provided document text",
 )
-async def analyze_qa(body: QARequest) -> QAResponse | JSONResponse:
+@limiter.limit("20/minute")
+async def analyze_qa(request: Request, body: QARequest) -> QAResponse | JSONResponse:
     """Answer *body.question* using only the content of *body.text*.
 
     - **body.text** — Full document text to query against.
@@ -63,6 +67,18 @@ async def analyze_qa(body: QARequest) -> QAResponse | JSONResponse:
             ).model_dump(),
         )
 
+    if len(text) > MAX_TEXT_CHARS:
+        _logger.warning("QA request — text too long  length=%d  limit=%d", len(text), MAX_TEXT_CHARS)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=ErrorResponse(
+                error=ErrorDetail(
+                    code="TEXT_TOO_LONG",
+                    message=f"The document text exceeds the {MAX_TEXT_CHARS:,}-character limit.",
+                )
+            ).model_dump(),
+        )
+
     if not question:
         _logger.warning("QA request — empty question")
         return JSONResponse(
@@ -82,7 +98,7 @@ async def analyze_qa(body: QARequest) -> QAResponse | JSONResponse:
             question=question,
             history=history,
         )
-        result = generate_structured(prompt, QA_SCHEMA)
+        result = await generate_structured(prompt, QA_SCHEMA)
         _logger.info(
             "QA complete — found_in_document=%s",
             result.get("found_in_document"),

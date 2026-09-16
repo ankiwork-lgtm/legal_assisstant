@@ -8,6 +8,8 @@ from app.utils.logger import get_logger  # noqa: E402 — must come after load_d
 
 _logger = get_logger(__name__)
 
+MAX_TEXT_CHARS = 50_000
+
 
 class Settings:
     def __init__(self) -> None:

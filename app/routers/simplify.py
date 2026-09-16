@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
+from app.config import MAX_TEXT_CHARS
+from app.limiter import limiter
 from app.models.schemas import ErrorDetail, ErrorResponse, SimplifyRequest, SimplifyResponse
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import SIMPLIFY_SCHEMA, build_simplify_prompt
@@ -21,11 +23,13 @@ router = APIRouter(prefix="/api/analyze", tags=["analyze"])
     response_model=SimplifyResponse,
     responses={
         400: {"description": "Empty or invalid input"},
+        429: {"description": "Rate limit exceeded"},
         502: {"description": "AI service unavailable"},
     },
     summary="Return a plain-language explanation of a legal document",
 )
-async def simplify_document(body: SimplifyRequest) -> SimplifyResponse | JSONResponse:
+@limiter.limit("20/minute")
+async def simplify_document(request: Request, body: SimplifyRequest) -> SimplifyResponse | JSONResponse:
     """Accept raw document text and return a structured plain-language explanation.
 
     - **body.text** — The full document text to simplify.
@@ -50,9 +54,21 @@ async def simplify_document(body: SimplifyRequest) -> SimplifyResponse | JSONRes
             ).model_dump(),
         )
 
+    if len(text) > MAX_TEXT_CHARS:
+        _logger.warning("Simplify request — text too long  length=%d  limit=%d", len(text), MAX_TEXT_CHARS)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=ErrorResponse(
+                error=ErrorDetail(
+                    code="TEXT_TOO_LONG",
+                    message=f"The provided text exceeds the {MAX_TEXT_CHARS:,}-character limit.",
+                )
+            ).model_dump(),
+        )
+
     try:
         prompt = build_simplify_prompt(text)
-        result = generate_structured(prompt, SIMPLIFY_SCHEMA)
+        result = await generate_structured(prompt, SIMPLIFY_SCHEMA)
         sections_count = len(result.get("sections", []))
         _logger.info("Simplify complete — sections=%d", sections_count)
         return SimplifyResponse(**result)

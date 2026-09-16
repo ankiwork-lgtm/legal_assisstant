@@ -3,10 +3,13 @@ import time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
+from app.limiter import limiter
+from app.models.schemas import ErrorDetail, ErrorResponse
 from app.routers import checklist
 from app.routers import compare
 from app.routers import documents
@@ -18,6 +21,7 @@ from app.utils.logger import get_logger
 _logger = get_logger(__name__)
 
 app = FastAPI(title="LegalLens AI")
+app.state.limiter = limiter
 
 _logger.info("LegalLens AI application starting up")
 
@@ -32,6 +36,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    """Return the standard error envelope on HTTP 429."""
+    body = ErrorResponse(
+        error=ErrorDetail(
+            code="RATE_LIMITED",
+            message="Too many requests. Please wait a moment before trying again.",
+        )
+    )
+    return JSONResponse(status_code=429, content=body.model_dump())
 
 
 @app.middleware("http")

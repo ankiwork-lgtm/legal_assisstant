@@ -188,6 +188,8 @@ class TestScannedPDF:
 # ---------------------------------------------------------------------------
 
 from fastapi.testclient import TestClient
+
+from app.config import MAX_TEXT_CHARS
 from app.main import app
 from app.routers.documents import MAX_FILE_BYTES
 
@@ -212,6 +214,11 @@ class TestExtractEndpoint:
         resp = client.post("/api/documents/extract", data={"text": "   "})
         assert resp.status_code == 400
         assert resp.json()["error"]["code"] == "EMPTY_TEXT"
+
+    def test_pasted_text_exceeding_limit_returns_text_too_long(self):
+        resp = client.post("/api/documents/extract", data={"text": "x" * (MAX_TEXT_CHARS + 1)})
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "TEXT_TOO_LONG"
 
     def test_no_input_returns_400(self):
         resp = client.post("/api/documents/extract")

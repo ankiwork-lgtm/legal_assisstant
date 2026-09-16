@@ -68,13 +68,31 @@ The API is available at `http://localhost:8000/api/`.
 The frontend is served from `public/` — open `http://localhost:8000/` in your browser  
 (or open `public/index.html` directly via a local static server).
 
-### 5. Run tests
+### 5. Run backend tests
 
 ```bash
 python -m pytest -v
 ```
 
-All 269 tests should pass. Tests mock the Anthropic API — no API key is needed.
+All tests should pass. Tests mock the Anthropic API — no API key is needed.
+
+### 6. Run frontend JS tests
+
+No npm, no build step — plain Node.js (v18+) only.
+
+```bash
+node tests/js/test_storage.js
+node tests/js/test_api.js
+```
+
+Both scripts exit **0** on success and print a per-assertion pass/fail summary.
+
+| Test file | What it covers |
+|---|---|
+| `tests/js/test_storage.js` | `saveDocument`, `getDocument`, `saveResult` (all kinds including `qa` append), `getHistory` (newest-first sort), `clearHistory`, duplicate-ID deduplication, implicit-entry creation |
+| `tests/js/test_api.js` | Every exported function (`extractDocument`, `simplifyDocument`, `analyzeRisks`, `generateChecklist`, `compareDocuments`, `askQuestion`) — asserts correct URL, HTTP method, headers, and request body; also checks that non-`ok` responses throw, and that `MAX_FILE_SIZE` is exported correctly |
+
+The tests mock `localStorage` and `fetch` as in-memory stubs — no browser and no network connection required.
 
 ---
 
