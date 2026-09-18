@@ -5,13 +5,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
-from app.config import MAX_TEXT_CHARS
 from app.limiter import limiter
 from app.models.schemas import CompareRequest, CompareResponse, ErrorDetail, ErrorResponse
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import COMPARE_SCHEMA, build_compare_prompt
 from app.utils.errors import http_error_response
 from app.utils.logger import get_logger
+from app.utils.validation import check_text_length
 
 _logger = get_logger(__name__)
 
@@ -83,22 +83,10 @@ async def analyze_compare(request: Request, body: CompareRequest) -> CompareResp
             ).model_dump(),
         )
 
-    if len(doc_a) > MAX_TEXT_CHARS or len(doc_b) > MAX_TEXT_CHARS:
-        _logger.warning(
-            "Compare request — document text too long  doc_a_len=%d  doc_b_len=%d  limit=%d",
-            len(doc_a),
-            len(doc_b),
-            MAX_TEXT_CHARS,
-        )
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content=ErrorResponse(
-                error=ErrorDetail(
-                    code="TEXT_TOO_LONG",
-                    message=f"Each document must not exceed the {MAX_TEXT_CHARS:,}-character limit.",
-                )
-            ).model_dump(),
-        )
+    if err := check_text_length(doc_a, "doc_a"):
+        return err
+    if err := check_text_length(doc_b, "doc_b"):
+        return err
 
     try:
         prompt = build_compare_prompt(

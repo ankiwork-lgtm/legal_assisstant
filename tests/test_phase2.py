@@ -8,6 +8,7 @@ Covers:
 
 from __future__ import annotations
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -62,11 +63,13 @@ def _mock_anthropic_response(payload: dict) -> MagicMock:
 
 @pytest.fixture(autouse=True)
 def clear_response_cache():
-    """Ensure the TTL cache is empty before each test to prevent bleed-through."""
-    from app.services.anthropic_client import _response_cache
+    """Ensure the TTL cache and in-flight dict are empty before each test."""
+    from app.services.anthropic_client import _response_cache, _in_flight
     _response_cache.clear()
+    _in_flight.clear()
     yield
     _response_cache.clear()
+    _in_flight.clear()
 
 
 class TestGenerateStructured:
@@ -144,6 +147,29 @@ class TestGenerateStructured:
         mock_client.messages.create = AsyncMock(return_value=resp)
         result = await generate_structured("prompt", SIMPLIFY_SCHEMA)
         assert result == payload
+
+
+    @pytest.mark.asyncio
+    @patch("app.services.anthropic_client._client")
+    async def test_concurrent_identical_requests_call_api_once(self, mock_client):
+        """Two concurrent calls with the same prompt must result in exactly one
+        messages.create invocation — the second awaits the in-flight Future."""
+        expected = {"overview": "dedup", "sections": []}
+
+        async def slow_create(*args, **kwargs):
+            await asyncio.sleep(0)  # yield to allow second coroutine to queue up
+            return _mock_anthropic_response(expected)
+
+        mock_client.messages.create = AsyncMock(side_effect=slow_create)
+
+        results = await asyncio.gather(
+            generate_structured("same prompt", SIMPLIFY_SCHEMA),
+            generate_structured("same prompt", SIMPLIFY_SCHEMA),
+        )
+
+        assert mock_client.messages.create.call_count == 1
+        assert results[0] == expected
+        assert results[1] == expected
 
 
 # ===========================================================================
@@ -282,13 +308,13 @@ class TestQAPromptHistory:
 class TestComparePromptLabels:
     def test_custom_labels_appear_in_prompt(self):
         prompt = build_compare_prompt("a", "b", label_a="Lease 2023", label_b="Lease 2024")
-        assert "Lease 2023" in prompt
-        assert "Lease 2024" in prompt
+        assert "`Lease 2023`" in prompt
+        assert "`Lease 2024`" in prompt
 
     def test_default_labels_are_document_a_b(self):
         prompt = build_compare_prompt("a", "b")
-        assert "Document A" in prompt
-        assert "Document B" in prompt
+        assert "`Document A`" in prompt
+        assert "`Document B`" in prompt
 
 
 class TestSchemaShapes:

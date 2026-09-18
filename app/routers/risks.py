@@ -5,13 +5,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
-from app.config import MAX_TEXT_CHARS
 from app.limiter import limiter
 from app.models.schemas import ErrorDetail, ErrorResponse, RisksRequest, RisksResponse
 from app.services.anthropic_client import generate_structured
 from app.services.prompts import RISKS_SCHEMA, build_risks_prompt
 from app.utils.errors import http_error_response
 from app.utils.logger import get_logger
+from app.utils.validation import check_text_length
 
 _logger = get_logger(__name__)
 
@@ -55,17 +55,8 @@ async def analyze_risks(request: Request, body: RisksRequest) -> RisksResponse |
             ).model_dump(),
         )
 
-    if len(text) > MAX_TEXT_CHARS:
-        _logger.warning("Risks request — text too long  length=%d  limit=%d", len(text), MAX_TEXT_CHARS)
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content=ErrorResponse(
-                error=ErrorDetail(
-                    code="TEXT_TOO_LONG",
-                    message=f"The provided text exceeds the {MAX_TEXT_CHARS:,}-character limit.",
-                )
-            ).model_dump(),
-        )
+    if err := check_text_length(text, "text"):
+        return err
 
     try:
         prompt = build_risks_prompt(text)

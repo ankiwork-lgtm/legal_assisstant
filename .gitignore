@@ -54,7 +54,10 @@ venv/
 .venv/
 
 # Internal planning / evaluation artefacts (not part of the submission)
-score-improvement-plan.md
-public-ui-redesign-plan.md
+*-plan.md
+*-plan-v*.md
+*-improvement-plan*.md
+*-redesign-plan*.md
+*-streaming-plan*.md
 legallens-ai-evaluation-report.html
 public/feature-gap-analysis.html

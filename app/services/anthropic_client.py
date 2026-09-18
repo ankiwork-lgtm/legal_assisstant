@@ -63,6 +63,10 @@ _PROMPT_CHAR_LIMIT = 40_000
 
 _response_cache: TTLCache[str, dict[str, Any]] = TTLCache(maxsize=64, ttl=300)
 
+# In-flight futures: deduplicates concurrent identical cache misses so that
+# only one API call is made per unique cache key at any given time.
+_in_flight: dict[str, asyncio.Future[dict[str, Any]]] = {}
+
 
 def _cache_key(prompt: str, schema: dict[str, Any]) -> str:
     """Return a stable hex digest for a (prompt, schema) pair."""
@@ -116,6 +120,15 @@ async def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, 
         _logger.debug("Cache hit — returning cached response (key=%s…)", cache_key[:12])
         return _response_cache[cache_key]
 
+    # ── In-flight deduplication ───────────────────────────────────────────────
+    # If another coroutine is already fetching this exact key, await its result.
+    if cache_key in _in_flight:
+        _logger.debug("In-flight hit — awaiting existing request (key=%s…)", cache_key[:12])
+        return await _in_flight[cache_key]
+
+    future: asyncio.Future[dict[str, Any]] = asyncio.get_event_loop().create_future()
+    _in_flight[cache_key] = future
+
     last_exc: BaseException | None = None
 
     # ── Prompt length guard ──────────────────────────────────────────────────
@@ -146,67 +159,74 @@ async def generate_structured(prompt: str, schema: dict[str, Any]) -> dict[str, 
         len(prompt),
     )
 
-    for attempt in range(1, _MAX_ATTEMPTS + 1):
-        t0 = time.perf_counter()
-        try:
-            # Native async call — no thread-pool blocking
-            response = await _client.messages.create(
-                model=settings.anthropic_model,
-                max_tokens=_MAX_TOKENS,
-                system=system_prompt,
-                messages=[{"role": "user", "content": prompt}],
-            )
+    try:
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            t0 = time.perf_counter()
+            try:
+                # Native async call — no thread-pool blocking
+                response = await _client.messages.create(
+                    model=settings.anthropic_model,
+                    max_tokens=_MAX_TOKENS,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": prompt}],
+                )
 
-            raw = response.content[0].text if response.content else ""
-            if not raw:
-                raise ValueError("Anthropic returned an empty response body.")
+                raw = response.content[0].text if response.content else ""
+                if not raw:
+                    raise ValueError("Anthropic returned an empty response body.")
 
-            # Strip markdown code fences if the model wraps its output
-            stripped = raw.strip()
-            if stripped.startswith("```"):
-                stripped = stripped.split("\n", 1)[-1]
-                stripped = stripped.rsplit("```", 1)[0]
+                # Strip markdown code fences if the model wraps its output
+                stripped = raw.strip()
+                if stripped.startswith("```"):
+                    stripped = stripped.split("\n", 1)[-1]
+                    stripped = stripped.rsplit("```", 1)[0]
 
-            elapsed_ms = (time.perf_counter() - t0) * 1000
-            _logger.info(
-                "Anthropic response received — attempt=%d  %.1fms  response_len=%d chars",
-                attempt,
-                elapsed_ms,
-                len(raw),
-            )
-            result = json.loads(stripped)
+                elapsed_ms = (time.perf_counter() - t0) * 1000
+                _logger.info(
+                    "Anthropic response received — attempt=%d  %.1fms  response_len=%d chars",
+                    attempt,
+                    elapsed_ms,
+                    len(raw),
+                )
+                result = json.loads(stripped)
 
-            # Store in cache before returning
-            _response_cache[cache_key] = result
-            return result
+                # Store in cache and resolve in-flight future before returning
+                _response_cache[cache_key] = result
+                future.set_result(result)
+                return result
 
-        except AnthropicServiceError:
-            raise  # don't swallow our own typed error
-        except Exception as exc:  # noqa: BLE001
-            elapsed_ms = (time.perf_counter() - t0) * 1000
-            _logger.warning(
-                "Anthropic attempt %d/%d failed after %.1fms — %s: %s",
-                attempt,
-                _MAX_ATTEMPTS,
-                elapsed_ms,
-                type(exc).__name__,
-                exc,
-            )
-            last_exc = exc
-            if attempt < _MAX_ATTEMPTS:
-                # Exponential backoff with jitter: 1s ± 0–0.5s, 2s ± 0–0.5s, …
-                wait = 2 ** (attempt - 1) + random.uniform(0, 0.5)  # noqa: S311
-                _logger.info("Retrying in %.2f s…", wait)
-                await asyncio.sleep(wait)
-            continue
+            except AnthropicServiceError:
+                raise  # don't swallow our own typed error
+            except Exception as exc:  # noqa: BLE001
+                elapsed_ms = (time.perf_counter() - t0) * 1000
+                _logger.warning(
+                    "Anthropic attempt %d/%d failed after %.1fms — %s: %s",
+                    attempt,
+                    _MAX_ATTEMPTS,
+                    elapsed_ms,
+                    type(exc).__name__,
+                    exc,
+                )
+                last_exc = exc
+                if attempt < _MAX_ATTEMPTS:
+                    # Exponential backoff with jitter: 1s ± 0–0.5s, 2s ± 0–0.5s, …
+                    wait = 2 ** (attempt - 1) + random.uniform(0, 0.5)  # noqa: S311
+                    _logger.info("Retrying in %.2f s…", wait)
+                    await asyncio.sleep(wait)
+                continue
 
-    _logger.error(
-        "All %d Anthropic attempts exhausted — last error: %s: %s",
-        _MAX_ATTEMPTS,
-        type(last_exc).__name__ if last_exc else "unknown",
-        last_exc,
-    )
-    raise AnthropicServiceError(
-        "The AI service is temporarily unavailable. Please try again in a moment.",
-        cause=last_exc,
-    )
+        _logger.error(
+            "All %d Anthropic attempts exhausted — last error: %s: %s",
+            _MAX_ATTEMPTS,
+            type(last_exc).__name__ if last_exc else "unknown",
+            last_exc,
+        )
+        service_exc = AnthropicServiceError(
+            "The AI service is temporarily unavailable. Please try again in a moment.",
+            cause=last_exc,
+        )
+        future.set_exception(service_exc)
+        raise service_exc
+
+    finally:
+        _in_flight.pop(cache_key, None)

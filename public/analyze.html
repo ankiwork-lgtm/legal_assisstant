@@ -70,7 +70,7 @@
             <span>Generating summary… <small style="font-weight:400;color:var(--color-muted)">(This may take 15–20 seconds)</small></span>
           </div>
           <div class="error-msg" id="simplify-error" role="alert" aria-live="assertive"></div>
-          <div class="result-area" id="simplify-result"></div>
+          <div class="result-area" id="simplify-result" aria-live="polite" aria-atomic="false"></div>
         </div>
       </div>
 
@@ -85,7 +85,7 @@
             <span>Analyzing risks… <small style="font-weight:400;color:var(--color-muted)">(This may take 15–20 seconds)</small></span>
           </div>
           <div class="error-msg" id="risks-error" role="alert" aria-live="assertive"></div>
-          <div class="result-area" id="risks-result"></div>
+          <div class="result-area" id="risks-result" aria-live="polite" aria-atomic="false"></div>
         </div>
       </div>
 
@@ -100,14 +100,14 @@
             <span>Building checklist… <small style="font-weight:400;color:var(--color-muted)">(This may take 15–20 seconds)</small></span>
           </div>
           <div class="error-msg" id="checklist-error" role="alert" aria-live="assertive"></div>
-          <div class="result-area" id="checklist-result"></div>
+          <div class="result-area" id="checklist-result" aria-live="polite" aria-atomic="false"></div>
         </div>
       </div>
 
       <!-- ── Ask a Question panel ───────────────────────────────────────────── -->
       <div class="tab-panel" role="tabpanel" id="panel-qa" aria-labelledby="tab-qa" hidden>
         <div class="panel-inner">
-          <div class="result-area" id="qa-result" style="display:block;"></div>
+          <div class="result-area" id="qa-result" style="display:block;" aria-live="polite" aria-atomic="false"></div>
           <div class="loading loading-row" id="qa-loading" aria-live="polite" aria-label="Finding answer…">
             <span class="spinner" role="status" aria-hidden="true"></span>
             <span>Finding answer… <small style="font-weight:400;color:var(--color-muted)">(This may take 15–20 seconds)</small></span>

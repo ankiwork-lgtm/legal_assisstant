@@ -257,7 +257,7 @@ def build_compare_prompt(
     """Build the comparison prompt for *doc_a* and *doc_b*."""
     body = (
         "You are a legal document comparison specialist.\n"
-        f"Compare '{label_a}' and '{label_b}' below.\n\n"
+        f"Compare `{label_a}` and `{label_b}` below.\n\n"
         "Identify:\n"
         "1. Topics that appear in both documents — for each, state what each document "
         "says, whether they are materially different, and why that difference may matter.\n"
@@ -265,8 +265,8 @@ def build_compare_prompt(
         "If the documents are structurally very different types (e.g. a lease vs. a loan "
         "agreement), still perform a best-effort comparison and note the structural "
         "difference in the relevant 'why_it_matters' fields.\n\n"
-        f"--- {label_a} ---\n{doc_a}\n\n"
-        f"--- {label_b} ---\n{doc_b}"
+        f"--- `{label_a}` ---\n{doc_a}\n\n"
+        f"--- `{label_b}` ---\n{doc_b}"
     )
     return _with_disclaimer(body)
 

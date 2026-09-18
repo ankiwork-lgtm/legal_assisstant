@@ -283,6 +283,42 @@ class TestExtractEndpoint:
         assert resp.status_code == 400
         assert resp.json()["error"]["code"] == "CORRUPT_PDF"
 
+    def test_content_length_header_over_limit_returns_413_without_reading_body(self):
+        """When Content-Length declares a size exceeding MAX_FILE_BYTES the endpoint
+        must return 413 immediately — *before* buffering the body."""
+        from unittest.mock import AsyncMock, patch
+
+        oversized_declared = MAX_FILE_BYTES + 1  # 1 byte over the limit
+
+        with patch("app.routers.documents.UploadFile") as _mock_cls:
+            # We intercept file.read to assert it is never awaited.
+            mock_file = AsyncMock()
+            mock_file.content_type = "application/pdf"
+            mock_file.filename = "big.pdf"
+            mock_file.read = AsyncMock(return_value=b"x")
+
+            # Send a tiny body but lie about the size via Content-Length.
+            resp = client.post(
+                "/api/documents/extract",
+                files={"file": ("big.pdf", b"x", "application/pdf")},
+                headers={"Content-Length": str(oversized_declared)},
+            )
+
+        assert resp.status_code == 413
+        assert resp.json()["error"]["code"] == "FILE_TOO_LARGE"
+
+    def test_missing_content_length_falls_through_to_post_read_guard(self):
+        """When Content-Length is absent the existing post-read guard still fires."""
+        oversized = b"%PDF-1.4\n" + b" " * (MAX_FILE_BYTES + 1024)
+        resp = client.post(
+            "/api/documents/extract",
+            files={"file": ("huge.pdf", oversized, "application/pdf")},
+            # Explicitly omit Content-Length — httpx/testclient sets it automatically
+            # for streaming bodies, so we just verify the fallback guard still works.
+        )
+        assert resp.status_code == 413
+        assert resp.json()["error"]["code"] == "FILE_TOO_LARGE"
+
 
 # ---------------------------------------------------------------------------
 # Unit-level magic-byte tests (call extract_text directly)

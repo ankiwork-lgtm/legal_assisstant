@@ -95,7 +95,7 @@ def extract_text(pdf_bytes: bytes) -> ExtractionResult:
             "Please upload a text-based PDF or paste the document text directly."
         )
 
-    word_count = len(full_text.split())
+    word_count = sum(1 for _ in full_text.split())
     _logger.info(
         "PDF extracted — pages=%d  words=%d  chars=%d",
         page_count,

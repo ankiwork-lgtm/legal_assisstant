@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -77,7 +77,7 @@ class SimplifyResponse(BaseModel):
             "capturing the top-level purpose and most important points."
         ),
     )
-    sections: List[SimplifySection] = Field(
+    sections: list[SimplifySection] = Field(
         ..., description="One entry per distinct clause/section."
     )
 
@@ -120,13 +120,13 @@ class RiskCategory(BaseModel):
             "Privacy, Obligations, Auto-Renewal, Indemnification."
         ),
     )
-    items: List[RiskItem] = Field(..., description="Risk items belonging to this category.")
+    items: list[RiskItem] = Field(..., description="Risk items belonging to this category.")
 
 
 class RisksResponse(BaseModel):
     """Successful response from POST /api/analyze/risks."""
 
-    categories: List[RiskCategory] = Field(
+    categories: list[RiskCategory] = Field(
         ..., description="Risk items grouped by topic category."
     )
 
@@ -144,10 +144,10 @@ class ChecklistRequest(BaseModel):
 class ChecklistResponse(BaseModel):
     """Successful response from POST /api/analyze/checklist."""
 
-    ask_lawyer: List[str] = Field(
+    ask_lawyer: list[str] = Field(
         ..., description="Questions and items to raise with a licensed attorney or the other party."
     )
-    verify_yourself: List[str] = Field(
+    verify_yourself: list[str] = Field(
         ..., description="Things the user can check or verify on their own."
     )
 
@@ -199,7 +199,7 @@ class SharedTopic(BaseModel):
 class CompareResponse(BaseModel):
     """Successful response from POST /api/analyze/compare."""
 
-    shared_topics: List[SharedTopic] = Field(
+    shared_topics: list[SharedTopic] = Field(
         ...,
         description=(
             "Topics/clauses that appear in both documents, with each document's position. "
@@ -207,10 +207,10 @@ class CompareResponse(BaseModel):
             "each entry notes the structural difference."
         ),
     )
-    only_in_a: List[str] = Field(
+    only_in_a: list[str] = Field(
         ..., description="Clauses/topics present only in the first document."
     )
-    only_in_b: List[str] = Field(
+    only_in_b: list[str] = Field(
         ..., description="Clauses/topics present only in the second document."
     )
 
@@ -222,9 +222,9 @@ class CompareResponse(BaseModel):
 class HistoryItem(BaseModel):
     """A single conversational turn (prior Q&A exchange)."""
 
-    role: str = Field(
+    role: Literal["user", "assistant"] = Field(
         ...,
-        description="Speaker role: 'user' or 'assistant'.",
+        description="Speaker role.",
     )
     content: str = Field(
         ...,
@@ -237,7 +237,7 @@ class QARequest(BaseModel):
 
     text: str = Field(..., min_length=1, description="Raw document text to query against.")
     question: str = Field(..., min_length=1, max_length=2000, description="The user's question about the document.")
-    history: List[HistoryItem] = Field(
+    history: list[HistoryItem] = Field(
         default_factory=list,
         description=(
             "Optional list of prior conversation turns for follow-up questions. "

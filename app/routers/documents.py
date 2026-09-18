@@ -18,6 +18,9 @@ _logger = get_logger(__name__)
 # Default upload size limit: 10 MB (keeps us within Vercel's payload limits)
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 
+# Strict allowlist — allocated once rather than per-request.
+_ALLOWED_CONTENT_TYPES = {"application/pdf", "application/octet-stream"}
+
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 
@@ -64,7 +67,6 @@ async def extract_document(
         # Strict allowlist: only accept known PDF MIME types.
         # Using a blocklist/partial check allowed application/zip and similar
         # types to bypass validation — an explicit allowlist is safer.
-        _ALLOWED_CONTENT_TYPES = {"application/pdf", "application/octet-stream"}
         if file.content_type not in _ALLOWED_CONTENT_TYPES:
             _logger.warning("Rejected invalid file type — %s", file.content_type)
             return _error(
@@ -75,6 +77,30 @@ async def extract_document(
                 ),
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Fast-path rejection: if Content-Length is present and already exceeds
+        # the limit, return 413 immediately without buffering the body.
+        content_length_header = request.headers.get("content-length")
+        if content_length_header is not None:
+            try:
+                declared_size = int(content_length_header)
+            except ValueError:
+                declared_size = None
+            if declared_size is not None and declared_size > MAX_FILE_BYTES:
+                _logger.warning(
+                    "File too large (Content-Length pre-check) — declared=%d bytes  limit=%d bytes",
+                    declared_size,
+                    MAX_FILE_BYTES,
+                )
+                return _error(
+                    code="FILE_TOO_LARGE",
+                    message=(
+                        f"Uploaded file is {declared_size // (1024 * 1024)} MB, "
+                        f"which exceeds the {MAX_FILE_BYTES // (1024 * 1024)} MB limit. "
+                        "Please upload a smaller file."
+                    ),
+                    status_code=413,
+                )
 
         pdf_bytes = await file.read()
         _logger.debug("File read — size=%d bytes", len(pdf_bytes))
@@ -148,7 +174,7 @@ async def extract_document(
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        word_count = len(stripped.split())
+        word_count = sum(1 for _ in stripped.split())
         _logger.info("Extract complete — path=text  words=%d", word_count)
         return ExtractResponse(
             text=stripped,
