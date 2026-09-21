@@ -22,7 +22,7 @@ A GenAI-powered web application that helps non-lawyers understand, compare, and 
 ## Tech Stack
 
 - **Backend:** Python 3.12, FastAPI, Uvicorn
-- **LLM:** Anthropic Claude (`claude-haiku-4-5`) via `anthropic` SDK, routed through IBM watsonx ICA
+- **LLM:** Anthropic Claude (`claude-haiku-4-5`) via `anthropic` SDK
 - **PDF extraction:** `pypdf` (pure-Python, no system deps)
 - **Rate limiting:** `slowapi` (per-IP, 20 req/min on analyze endpoints; 60 req/min on health)
 - **Frontend:** Static HTML5 + CSS3 + vanilla JS (no build step)
@@ -60,7 +60,6 @@ cp .env.example .env
 `.env.example`:
 ```
 ANTHROPIC_API_KEY=                                        # Required — your Anthropic API key
-ANTHROPIC_BASE_URL=https://api.nextgen-beta.ica.ibm.com/ica  # IBM watsonx ICA gateway
 ANTHROPIC_MODEL=claude-haiku-4-5                          # Model to use
 CORS_ORIGIN=http://localhost:8000                          # Dev only — change for production
 ```
@@ -135,7 +134,6 @@ In the Vercel dashboard → **Project Settings → Environment Variables**, add:
 | Variable | Value |
 |---|---|
 | `ANTHROPIC_API_KEY` | Your Anthropic API key |
-| `ANTHROPIC_BASE_URL` | `https://api.nextgen-beta.ica.ibm.com/ica` |
 | `ANTHROPIC_MODEL` | `claude-haiku-4-5` |
 | `CORS_ORIGIN` | Your deployed frontend URL, e.g. `https://legallens-ai.vercel.app` |
 | `LOG_LEVEL` | `INFO` (or `DEBUG` for verbose logs) |
