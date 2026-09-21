@@ -24,6 +24,7 @@ A GenAI-powered web application that helps non-lawyers understand, compare, and 
 - **Backend:** Python 3.12, FastAPI, Uvicorn
 - **LLM:** Anthropic Claude (`claude-haiku-4-5`) via `anthropic` SDK, routed through IBM watsonx ICA
 - **PDF extraction:** `pypdf` (pure-Python, no system deps)
+- **Rate limiting:** `slowapi` (per-IP, 20 req/min on analyze endpoints; 60 req/min on health)
 - **Frontend:** Static HTML5 + CSS3 + vanilla JS (no build step)
 - **Client persistence:** `localStorage` only — no server-side storage
 - **Deployment:** Vercel (Python ASGI function + static files)
@@ -39,8 +40,14 @@ A GenAI-powered web application that helps non-lawyers understand, compare, and 
 
 ### 2. Install dependencies
 
+For production only:
 ```bash
 python -m pip install -r requirements.txt
+```
+
+For development and testing (includes pytest and coverage tools):
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
 ### 3. Configure environment
@@ -58,6 +65,12 @@ ANTHROPIC_MODEL=claude-haiku-4-5                          # Model to use
 CORS_ORIGIN=http://localhost:8000                          # Dev only — change for production
 ```
 
+Optional environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `LOG_LEVEL` | `INFO` | Log verbosity. Set to `DEBUG` to see prompt snippets and raw AI payloads. |
+
 ### 4. Run the server
 
 ```bash
@@ -74,7 +87,7 @@ The frontend is served from `public/` — open `http://localhost:8000/` in your 
 python -m pytest -v
 ```
 
-All tests should pass. Tests mock the Anthropic API — no API key is needed.
+All tests should pass. Tests mock the Anthropic API — no API key is needed. The root `conftest.py` injects a dummy `ANTHROPIC_API_KEY` so `app.config` loads cleanly during test collection. A `tests/conftest.py` resets the in-memory rate-limit counters before every test so 429s don't bleed between test cases.
 
 ### 6. Run frontend JS tests
 
@@ -96,6 +109,17 @@ The tests mock `localStorage` and `fetch` as in-memory stubs — no browser and 
 
 ---
 
+## Security
+
+The application enforces several security controls:
+
+- **Security headers** — every response includes `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`, `Referrer-Policy`, `Permissions-Policy`, and `X-XSS-Protection: 0`.
+- **Rate limiting** — powered by `slowapi`; analyze endpoints are capped at **20 requests/minute per IP**; the health endpoint allows 60/minute. Exceeding the limit returns HTTP 429 with `{"error": {"code": "RATE_LIMITED", "message": "..."}}`.
+- **Input size cap** — all text inputs are limited to **50,000 characters**. Requests exceeding this return HTTP 400 with `{"error": {"code": "TEXT_TOO_LONG", "message": "..."}}`.
+- **CORS** — locked to the single origin set in `CORS_ORIGIN`; defaults to `http://localhost:8000` for local dev.
+
+---
+
 ## Deployment to Vercel
 
 ### Step 1 — Install Vercel CLI (optional but convenient)
@@ -114,6 +138,7 @@ In the Vercel dashboard → **Project Settings → Environment Variables**, add:
 | `ANTHROPIC_BASE_URL` | `https://api.nextgen-beta.ica.ibm.com/ica` |
 | `ANTHROPIC_MODEL` | `claude-haiku-4-5` |
 | `CORS_ORIGIN` | Your deployed frontend URL, e.g. `https://legallens-ai.vercel.app` |
+| `LOG_LEVEL` | `INFO` (or `DEBUG` for verbose logs) |
 
 > ⚠️ `ANTHROPIC_API_KEY` is a **secret** — never expose it to the frontend or commit it to source control.
 
@@ -156,8 +181,10 @@ legallens-ai/
 ├── api/
 │   └── index.py                  # Vercel ASGI entry point
 ├── app/
-│   ├── main.py                   # FastAPI app, CORS, router mounts
-│   ├── config.py                 # Env var loading (ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, ANTHROPIC_MODEL, CORS_ORIGIN)
+│   ├── main.py                   # FastAPI app, CORS, security headers, router mounts
+│   ├── config.py                 # Env var loading (ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL,
+│   │                             #   ANTHROPIC_MODEL, CORS_ORIGIN); MAX_TEXT_CHARS = 50,000
+│   ├── limiter.py                # Shared slowapi Limiter instance (avoids circular imports)
 │   ├── models/
 │   │   └── schemas.py            # Pydantic request/response models
 │   ├── routers/
@@ -172,29 +199,44 @@ legallens-ai/
 │   │   ├── pdf_extractor.py      # pypdf-based in-memory extraction
 │   │   └── prompts.py            # Prompt templates + JSON schemas for all features
 │   └── utils/
-│       └── errors.py             # Exception → HTTP status mapping
+│       ├── errors.py             # Exception → HTTP status mapping
+│       ├── logger.py             # Centralised logging (legallens.* namespace, LOG_LEVEL)
+│       └── validation.py        # Shared input-length guard (check_text_length)
 ├── public/
 │   ├── index.html                # Upload / home page
 │   ├── analyze.html              # Tabbed analysis workspace
 │   ├── compare.html              # Two-document comparison workspace
+│   ├── feature-gap-analysis.html # Internal feature-gap tracking page
 │   ├── css/styles.css            # All styles (layout, severity colors, toast, spinner)
 │   └── js/
 │       ├── api.js                # Fetch wrappers for all backend endpoints
 │       ├── storage.js            # localStorage helpers (FR-7)
 │       ├── toast.js              # Error toast utility
 │       ├── upload.js             # Upload/paste handling + session history
+│       ├── analyze.js            # Analysis workspace controller
+│       ├── compare.js            # Comparison workspace controller
 │       └── render.js             # JSON → DOM renderers for all 5 features
+├── scripts/
+│   └── generate_sample_pdfs.py  # Developer utility — generates sample PDFs for manual testing
 ├── tests/
+│   ├── conftest.py               # Resets rate-limit counters before every test
+│   ├── fixtures/                 # Shared test fixture files
+│   ├── test_misc.py              # Health endpoint, MIME rejection, compare text-length limits
 │   ├── test_pdf_extractor.py
 │   ├── test_phase2.py
 │   ├── test_phase3_simplify.py
 │   ├── test_phase4_risks.py
 │   ├── test_phase5_checklist.py
 │   ├── test_phase6_compare.py
-│   └── test_phase7_qa.py
-├── requirements.txt
-├── vercel.json
+│   ├── test_phase7_qa.py
+│   └── test_rate_limiting.py     # 429 behaviour on all analyze endpoints
+│   └── js/
+│       ├── test_storage.js
+│       └── test_api.js
 ├── conftest.py                   # Sets dummy ANTHROPIC_API_KEY for test collection
+├── requirements.txt              # Runtime dependencies
+├── requirements-dev.txt          # Dev/test dependencies (extends requirements.txt)
+├── vercel.json
 └── .env.example
 ```
 
@@ -215,6 +257,14 @@ Base path: `/api`
 | POST | `/analyze/qa` | `{text, question, history?}` | `{answer, found_in_document, supporting_clause_ref}` |
 
 All errors return: `{"error": {"code": str, "message": str}}`
+
+### Error codes
+
+| Code | HTTP | Description |
+|---|---|---|
+| `RATE_LIMITED` | 429 | Per-IP request limit exceeded |
+| `TEXT_TOO_LONG` | 400 | Input text exceeds 50,000 characters |
+| `INVALID_FILE_TYPE` | 400 | Uploaded file is not a PDF |
 
 ---
 
